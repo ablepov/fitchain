@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const runtime = 'edge';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
@@ -6,7 +8,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> } | { params: { id: string } }
 ) {
   const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -22,6 +24,9 @@ export async function DELETE(
         { status: 401 }
       );
     }
+
+    // Get params id
+    const params = 'then' in context.params ? await context.params : context.params;
 
     // Проверяем, что запись принадлежит пользователю
     const { data: set, error: getError } = await supabase

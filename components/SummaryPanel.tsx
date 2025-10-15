@@ -25,16 +25,18 @@ export function SummaryPanel({
     if (!userId) return;
     
     // Используем переданную таймзону или загружаем из профиля
-    let tz = propTimezone;
-    if (!tz) {
+    let tz = propTimezone ?? timezone;
+    if (!propTimezone) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("timezone")
         .eq("user_id", userId)
         .maybeSingle();
-      tz = profile?.timezone || "Europe/Moscow";
+      if (profile?.timezone) {
+        tz = profile.timezone;
+        setTimezone(profile.timezone);
+      }
     }
-    setTimezone(tz);
 
     const { startISO, endISO } = getDayBoundsISO(tz);
     const { data: ex } = await supabase.from("exercises").select("id,type");
