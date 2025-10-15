@@ -4,7 +4,15 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getDayBoundsISO } from "@/lib/date";
 
-export function SummaryPanel({ timezone: propTimezone, refreshTrigger }: { timezone?: string; refreshTrigger?: number }) {
+export function SummaryPanel({ 
+  timezone: propTimezone, 
+  refreshTrigger,
+  onTotalsChange
+}: { 
+  timezone?: string; 
+  refreshTrigger?: number;
+  onTotalsChange?: (totals: { type: string; total: number }[]) => void;
+}) {
   const [timezone, setTimezone] = useState<string>("Europe/Moscow");
   const [summary, setSummary] = useState<{ type: string; total: number }[]>([]);
   const [total, setTotal] = useState(0);
@@ -46,6 +54,7 @@ export function SummaryPanel({ timezone: propTimezone, refreshTrigger }: { timez
     setSummary(results);
     setTotal(grand);
     setLoading(false);
+    if (onTotalsChange) onTotalsChange(results);
   };
 
   useEffect(() => {
@@ -73,28 +82,19 @@ export function SummaryPanel({ timezone: propTimezone, refreshTrigger }: { timez
         <h2 id="summary-heading" className="font-medium">Сводка за сегодня</h2>
         <span className="text-xs text-gray-500" aria-label="Часовой пояс">Часовой пояс: {timezone}</span>
       </div>
-      {loading ? (
-        <div className="animate-pulse space-y-2" role="status" aria-live="polite">
-          <div className="h-3 bg-gray-200 rounded" />
-          <div className="h-3 bg-gray-200 rounded w-3/4" />
-          <div className="h-3 bg-gray-200 rounded w-1/2" />
+        <ul className="text-sm space-y-1">
+          {summary.map((s) => (
+            <li key={s.type} className="flex items-center justify-between">
+              <span>{s.type}</span>
+              {loading ? (<span className="font-medium">?</span>):(<span className="font-medium">{s.total}</span>)}
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-center justify-between border-t pt-2">
+          <span>Итого</span>
+          {loading ? (<span className="font-medium">?</span>):(<span className="font-semibold">{total}</span>)}
         </div>
-      ) : (
-        <>
-          <ul className="text-sm space-y-1">
-            {summary.map((s) => (
-              <li key={s.type} className="flex items-center justify-between">
-                <span>{s.type}</span>
-                <span className="font-medium">{s.total}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="flex items-center justify-between border-t pt-2">
-            <span>Итого</span>
-            <span className="font-semibold">{total}</span>
-          </div>
-        </>
-      )}
+
     </section>
   );
 }

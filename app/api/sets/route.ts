@@ -8,7 +8,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 const postSchema = z.object({
   exerciseId: z.string().uuid().optional(),
   exercise: z.enum(['pullups', 'pushups', 'squats']).optional(),
-  reps: z.number().int().min(1).max(1000),
+  reps: z.number().int().min(-1000).max(1000),
   note: z.string().max(500).optional(),
   source: z.enum(['manual', 'quickbutton']).default('quickbutton'),
 });

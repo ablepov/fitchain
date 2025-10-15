@@ -1,103 +1,131 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { QuickButtons } from "@/components/QuickButtons";
+import { MiniChart } from "@/components/MiniChart";
+import { SummaryPanel } from "@/components/SummaryPanel";
+
+
+
+type Exercise = {
+  id: string;
+  type: 'pullups' | 'pushups' | 'squats';
+  goal: number;
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [todayTotals, setTodayTotals] = useState<Record<string, number>>({});
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    (async () => {
+      const { data: me } = await supabase.auth.getUser();
+      if (!me.user) {
+        window.location.href = "/auth";
+        return;
+      }
+      // загрузим упражнения
+      const { data: ex } = await supabase
+        .from("exercises")
+        .select("id,type,goal")
+        .order("created_at", { ascending: true });
+      setExercises(ex ?? []);
+    })();
+  }, []);
+
+  async function createBaseExercises() {
+    setCreating(true);
+    setMessage(null);
+    const base = [
+      { type: 'pullups' as const, goal: 100 },
+      { type: 'pushups' as const, goal: 100 },
+      { type: 'squats' as const, goal: 100 },
+    ];
+    // фильтруем те, которых ещё нет
+    const existingTypes = new Set(exercises.map((e) => e.type));
+    const toInsertBase = base.filter((b) => !existingTypes.has(b.type));
+    if (toInsertBase.length === 0) {
+      setMessage("Базовые упражнения уже созданы");
+      setCreating(false);
+      return;
+    }
+    const { data: me } = await supabase.auth.getUser();
+    const userId = me.user?.id;
+    if (!userId) {
+      setMessage("Нет сессии пользователя");
+      setCreating(false);
+      return;
+    }
+    const toInsert = toInsertBase.map((b) => ({ ...b, user_id: userId }));
+    const { error } = await supabase.from("exercises").insert(toInsert);
+    if (error) {
+      setMessage(`Ошибка: ${error.message}`);
+    } else {
+      // перезагрузим список
+      const { data: ex } = await supabase
+        .from("exercises")
+        .select("id,type,goal")
+        .order("created_at", { ascending: true });
+      setExercises(ex ?? []);
+      setMessage("Созданы базовые упражнения");
+    }
+    setCreating(false);
+  }
+
+
+
+
+
+  return (
+    <main className="p-6 space-y-6 max-w-2xl mx-auto">
+      <div className="hidden">
+        <SummaryPanel 
+          refreshTrigger={refreshTrigger}
+          onTotalsChange={(totals) => {
+            const totalsMap = totals.reduce((acc, { type, total }) => ({ ...acc, [type]: total }), {});
+            setTodayTotals(totalsMap);
+          }}
+        />
+      </div>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Упражнения</h2>
+          <div className="flex gap-2">
+            <button
+              disabled={creating}
+              onClick={createBaseExercises}
+              className="px-3 py-2 rounded bg-black text-white disabled:opacity-60"
+            >
+              {creating ? "Создание..." : "Создать базовые (3)"}
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        {exercises.length === 0 ? (
+          <p className="text-sm text-gray-500">Пока нет упражнений</p>
+        ) : (
+          <ul className="divide-y border rounded">
+            {exercises.map((e) => (
+              <li key={e.id} className="p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">{e.type}</div>
+                  <div className="text-sm text-gray-600">цель: {todayTotals[e.type] || 0}/{e.goal}</div>
+                </div>
+                <MiniChart exerciseId={e.id} refreshTrigger={refreshTrigger} />
+                <QuickButtons 
+                  exerciseId={e.id} 
+                  onAdded={() => setRefreshTrigger(prev => prev + 1)}
+                  todayTotal={todayTotals[e.type] || 0}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
   );
 }

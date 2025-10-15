@@ -13,7 +13,7 @@ function median(values: number[]): number | null {
   return sorted[mid];
 }
 
-export function QuickButtons({ exerciseId, onAdded }: { exerciseId: string; onAdded?: () => void }) {
+export function QuickButtons({ exerciseId, onAdded, todayTotal = 0 }: { exerciseId: string; onAdded?: () => void; todayTotal?: number }) {
   const [lastReps, setLastReps] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
@@ -44,6 +44,10 @@ export function QuickButtons({ exerciseId, onAdded }: { exerciseId: string; onAd
   }, [lastReps]);
 
   async function addReps(amount: number) {
+    if (amount === -1) {
+      if (todayTotal <= 0) return; // Нельзя уменьшить, если за день 0
+      amount = -1; // Создаем отрицательную запись для уменьшения
+    }
     setMsg(null);
     setSending(true);
     const { data: sessionData } = await supabase.auth.getSession();
@@ -76,10 +80,17 @@ export function QuickButtons({ exerciseId, onAdded }: { exerciseId: string; onAd
   return (
     <div className="flex flex-col gap-2" role="group" aria-label="Быстрые кнопки">
       <div className="flex gap-2">
+        <button 
+          className="px-3 py-2 rounded border disabled:opacity-60" 
+          onClick={() => addReps(-1)} 
+          disabled={sending || todayTotal <= 0} 
+          aria-label="Убавить 1"
+          title={todayTotal <= 0 ? "Нечего убавлять" : undefined}
+        >-1</button>
         {buttons.map((v, index) => (
           <button
             key={`${v}-${index}`}
-            className="px-3 py-2 rounded bg-black text-white disabled:opacity-60"
+            className="button px-3 py-2 rounded bg-black text-white disabled:opacity-60"
             onClick={() => addReps(v)}
             aria-label={`Добавить ${v}`}
             disabled={sending}
