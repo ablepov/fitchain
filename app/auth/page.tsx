@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { Header } from "@/components/Header";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -52,8 +53,9 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="p-6 max-w-sm mx-auto">
-      <h1 className="text-2xl font-semibold">Вход</h1>
+    <>
+      <Header title="Вход" />
+      <main className="p-6 max-w-sm mx-auto">
       {authed ? (
         <div className="mt-4 space-y-3">
           <p className="text-sm text-gray-600">Вы вошли. Перейти к дашборду.</p>
@@ -92,5 +94,6 @@ export default function AuthPage() {
         </form>
       )}
     </main>
+    </>
   );
 }

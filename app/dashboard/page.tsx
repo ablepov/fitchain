@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { SummaryPanel } from "@/components/SummaryPanel";
+import { Header } from "@/components/Header";
 
 const timezones = [
   "Europe/Moscow",
@@ -77,41 +78,43 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="p-6 space-y-6 max-w-2xl mx-auto">
-      <header className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          {email && <span className="text-sm text-gray-600" aria-label="Email пользователя">{email}</span>}
-          <button className="px-3 py-2 rounded border" onClick={onSignOut}>Выйти</button>
+    <>
+      <Header title="Dashboard" />
+      <main className="p-6 space-y-6 max-w-2xl mx-auto">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          {email && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600" aria-label="Email пользователя">{email}</span>
+              <button className="px-3 py-2 rounded border" onClick={onSignOut}>Выйти</button>
+            </div>
+          )}
         </div>
-      </header>
 
-      <section>
-        <h2 className="font-medium">Часовой пояс</h2>
-        <div className="mt-2 flex gap-2 items-center">
-          <select
-            className="border rounded px-3 py-2"
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-          >
-            {timezones.map((tz) => (
-              <option key={tz} value={tz}>{tz}</option>
-            ))}
-          </select>
-          <button
-            disabled={savingTz}
-            className="px-3 py-2 rounded bg-black text-white disabled:opacity-60"
-            onClick={onSaveTimezone}
-          >
-            {savingTz ? "Сохранение..." : "Сохранить"}
-          </button>
-        </div>
-        {message && <p className="text-sm mt-2 text-gray-600">{message}</p>}
-      </section>
+        <section>
+          <h2 className="font-medium">Часовой пояс</h2>
+          <div className="mt-2 flex gap-2 items-center">
+            <select
+              className="border rounded px-3 py-2"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+            >
+              {timezones.map((tz) => (
+                <option key={tz} value={tz}>{tz}</option>
+              ))}
+            </select>
+            <button
+              disabled={savingTz}
+              className="px-3 py-2 rounded bg-black text-white disabled:opacity-60"
+              onClick={onSaveTimezone}
+            >
+              {savingTz ? "Сохранение..." : "Сохранить"}
+            </button>
+          </div>
+          {message && <p className="text-sm mt-2 text-gray-600">{message}</p>}
+        </section>
 
-      <SummaryPanel />
-
-
-    </main>
+        <SummaryPanel />
+      </main>
+    </>
   );
 }
