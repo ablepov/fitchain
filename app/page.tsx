@@ -75,7 +75,6 @@ export default function Home() {
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-medium">Упражнения</h2>
           </div>
           {exercises.length === 0 ? (
             <p className="text-sm text-gray-500">Пока нет упражнений</p>

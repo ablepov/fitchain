@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useReducer, useCallback } from "react";
+import { useEffect, useMemo, useState, useReducer, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { logger } from "@/lib/logger";
 
@@ -87,6 +87,12 @@ export function QuickButtons({ exerciseId, onAdded, todayTotal = 0 }: { exercise
   // Буферное состояние для первой итерации
   const [bufferState, dispatch] = useReducer(bufferReducer, initialBufferState);
 
+  // Состояние для реального времени таймера
+  const [currentTimeLeft, setCurrentTimeLeft] = useState(0);
+
+  // Используем useRef для хранения таймера (альтернатива прямой мутации состояния)
+  const bufferTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -139,11 +145,18 @@ export function QuickButtons({ exerciseId, onAdded, todayTotal = 0 }: { exercise
   // Очистка буферного таймера при размонтировании
   useEffect(() => {
     return () => {
-      if (bufferState.timerId) {
-        clearTimeout(bufferState.timerId);
+      if (bufferTimerRef.current) {
+        clearTimeout(bufferTimerRef.current);
       }
     };
-  }, [bufferState.timerId]);
+  }, []);
+
+  // Очистка интервала при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      setCurrentTimeLeft(0);
+    };
+  }, []);
 
   const buttons = useMemo(() => {
     const m = median(lastReps);
@@ -154,6 +167,11 @@ export function QuickButtons({ exerciseId, onAdded, todayTotal = 0 }: { exercise
   // Функция фиксации буфера в API (первая итерация)
   const commitBuffer = useCallback(async () => {
     if (bufferState.value === 0) {
+      // Очищаем таймер перед отменой
+      if (bufferTimerRef.current) {
+        clearTimeout(bufferTimerRef.current);
+        bufferTimerRef.current = null;
+      }
       dispatch({ type: 'CANCEL' });
       return; // Не отправляем пустые подходы
     }
@@ -208,17 +226,51 @@ export function QuickButtons({ exerciseId, onAdded, todayTotal = 0 }: { exercise
     }
   }, [bufferState.value, exerciseId, onAdded]);
 
-  // Устанавливаем таймер буфера при активации или изменении значения
+  // Управление таймерами буфера (фиксации и визуального отсчета)
   useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
     if (bufferState.isActive && bufferState.value > 0) {
-      if (bufferState.timerId) clearTimeout(bufferState.timerId);
+      // Очищаем старый таймер фиксации
+      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+
+      // Устанавливаем таймер фиксации
       const timerId = setTimeout(() => {
-        commitBuffer();
+        // Используем актуальную версию commitBuffer без зависимости
+        if (bufferState.value > 0) {
+          commitBuffer();
+        }
       }, 5000);
 
-      // Обновляем timerId в состоянии через прямую мутацию для простоты в первой итерации
-      bufferState.timerId = timerId;
+      // Обновляем timerId в ref (правильный способ без мутации)
+      bufferTimerRef.current = timerId;
+
+      // Сбрасываем визуальный таймер к 5 секундам
+      setCurrentTimeLeft(5);
+
+      // Запускаем интервал обновления визуального таймера
+      intervalId = setInterval(() => {
+        setCurrentTimeLeft(prev => {
+          if (prev <= 1) {
+            if (intervalId) clearInterval(intervalId);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setCurrentTimeLeft(0);
+      // Очищаем таймер если буфер не активен
+      if (bufferTimerRef.current) {
+        clearTimeout(bufferTimerRef.current);
+        bufferTimerRef.current = null;
+      }
     }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+    };
   }, [bufferState.value, bufferState.isActive]);
 
   // Новая функция обработки кликов кнопок (буферная логика)
@@ -333,7 +385,7 @@ export function QuickButtons({ exerciseId, onAdded, todayTotal = 0 }: { exercise
               </button>
             </div>
             <div className="text-sm text-orange-600">
-              Фиксация через 5с
+              Фиксация через {currentTimeLeft}с
             </div>
           </div>
         </div>
@@ -358,7 +410,7 @@ export function QuickButtons({ exerciseId, onAdded, todayTotal = 0 }: { exercise
         )}
         {bufferState.isActive && !msg && (
           <div className="text-sm text-orange-700 bg-orange-50 p-2 rounded border border-orange-200">
-            Нажмите кнопки для корректировки значения. Подход зафиксируется через 5с
+            Нажмите кнопки для корректировки значения. Подход зафиксируется через {currentTimeLeft}с
           </div>
         )}
       </div>

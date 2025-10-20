@@ -30,7 +30,6 @@ export default function ProfilePage() {
 
   // Состояние для упражнений
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
@@ -93,44 +92,6 @@ export default function ProfilePage() {
     setMessage(error ? `Ошибка: ${error.message}` : "Таймзона сохранена");
   }
 
-  async function createBaseExercises() {
-    setCreating(true);
-    setMessage(null);
-    const base = [
-      { type: 'pullups' as const, goal: 100 },
-      { type: 'pushups' as const, goal: 100 },
-      { type: 'squats' as const, goal: 100 },
-    ];
-    // Фильтруем те, которых ещё нет
-    const existingTypes = new Set(exercises.map((e) => e.type));
-    const toInsertBase = base.filter((b) => !existingTypes.has(b.type));
-    if (toInsertBase.length === 0) {
-      setMessage("Базовые упражнения уже созданы");
-      setCreating(false);
-      return;
-    }
-    const { data: me } = await supabase.auth.getUser();
-    const userId = me.user?.id;
-    if (!userId) {
-      setMessage("Нет сессии пользователя");
-      setCreating(false);
-      return;
-    }
-    const toInsert = toInsertBase.map((b) => ({ ...b, user_id: userId }));
-    const { error } = await supabase.from("exercises").insert(toInsert);
-    if (error) {
-      setMessage(`Ошибка: ${error.message}`);
-    } else {
-      // Перезагружаем список упражнений
-      const { data: ex } = await supabase
-        .from("exercises")
-        .select("id,type,goal")
-        .order("created_at", { ascending: true });
-      setExercises(ex ?? []);
-      setMessage("Созданы базовые упражнения");
-    }
-    setCreating(false);
-  }
 
   async function deleteExercise(exerciseId: string, exerciseType: string) {
     setDeletingId(exerciseId);
@@ -460,30 +421,16 @@ export default function ProfilePage() {
 
         <section>
           <h2 className="font-medium">Управление упражнениями</h2>
-          <div className="mt-2 space-y-3">
-            <div className="flex gap-2">
-              <button
-                disabled={creating}
-                onClick={createBaseExercises}
-                className="px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-60 hover:bg-blue-700 transition-colors"
-              >
-                {creating ? "Создание..." : "Создать базовые упражнения (3)"}
-              </button>
-              <button
-                onClick={openCreateForm}
-                className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
-              >
-                Создать новое упражнение
-              </button>
-            </div>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>
-                <strong>Базовые упражнения:</strong> Создаст три упражнения: подтягивания, отжимания, приседания (по 100 повторений каждое).
-              </p>
-              <p>
-                <strong>Новое упражнение:</strong> Создайте собственное упражнение с указанием названия и цели.
-              </p>
-            </div>
+          <div className="mt-2">
+            <button
+              onClick={openCreateForm}
+              className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
+            >
+              Создать новое упражнение
+            </button>
+            <p className="text-sm text-gray-600 mt-2">
+              Создайте собственное упражнение с указанием названия и цели. Например: Бег, Плавание, Жим гантелей.
+            </p>
           </div>
 
           {/* Форма создания нового упражнения */}
