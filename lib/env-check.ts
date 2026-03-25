@@ -1,7 +1,4 @@
-/**
- * Проверка корректности переменных окружения
- * Защищает от случайного удаления критически важных настроек
- */
+import { getMissingSupabaseEnvVars } from './supabaseEnv';
 
 interface EnvValidationResult {
   isValid: boolean;
@@ -9,39 +6,23 @@ interface EnvValidationResult {
   warnings: string[];
 }
 
-const CRITICAL_ENV_VARS = [
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY'
-] as const;
-
-const OPTIONAL_ENV_VARS = [
-  'PORT'
-] as const;
+const OPTIONAL_ENV_VARS = ['PORT'] as const;
 
 export function validateEnvironmentVariables(): EnvValidationResult {
-  const missing: string[] = [];
+  const missing = getMissingSupabaseEnvVars();
   const warnings: string[] = [];
 
-  // Проверяем критически важные переменные
-  CRITICAL_ENV_VARS.forEach(varName => {
-    const value = process.env[varName];
-    if (!value || value.includes('your_') || value.includes('placeholder')) {
-      missing.push(varName);
-    }
-  });
-
-  // Проверяем опциональные переменные
-  OPTIONAL_ENV_VARS.forEach(varName => {
+  OPTIONAL_ENV_VARS.forEach((varName) => {
     const value = process.env[varName];
     if (value === '3000') {
-      warnings.push(`${varName} использует порт по умолчанию, рекомендуется изменить`);
+      warnings.push(`${varName} uses the default port; consider changing it`);
     }
   });
 
   return {
     isValid: missing.length === 0,
     missing,
-    warnings
+    warnings,
   };
 }
 
@@ -49,21 +30,20 @@ export function logEnvironmentStatus(): void {
   const validation = validateEnvironmentVariables();
 
   if (validation.warnings.length > 0) {
-    console.warn('⚠️ Предупреждения переменных окружения:', validation.warnings);
+    console.warn('Environment warnings:', validation.warnings);
   }
 
   if (!validation.isValid) {
-    console.error('❌ Критические переменные окружения отсутствуют:', validation.missing);
-    console.error('📝 Пожалуйста, настройте следующие переменные в .env.local:');
-    validation.missing.forEach(varName => {
+    console.error('Critical environment variables are missing:', validation.missing);
+    console.error('Configure the missing variables in .env.local:');
+    validation.missing.forEach((varName) => {
       console.error(`   ${varName}=your_value_here`);
     });
   } else {
-    console.log('✅ Все переменные окружения настроены корректно');
+    console.log('Environment variables are configured correctly');
   }
 }
 
-// Проверка при запуске сервера разработки
 if (process.env.NODE_ENV === 'development') {
   logEnvironmentStatus();
 }

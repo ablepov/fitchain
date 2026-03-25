@@ -2,16 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+import { supabasePublishableKey, supabaseUrl } from '@/lib/supabaseEnv';
 
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> } | { params: { id: string } }
 ) {
   const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     global: { headers: { Authorization: authHeader } },
   });
 

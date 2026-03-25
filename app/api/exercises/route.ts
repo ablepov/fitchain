@@ -3,9 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'edge';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+import { supabasePublishableKey, supabaseUrl } from '@/lib/supabaseEnv';
 
 const postSchema = z.object({
   type: z.string().min(2).max(100).regex(/^[a-zA-Zа-яА-Я0-9\s]+$/, 'Название может содержать только буквы, цифры и пробелы'),
@@ -14,7 +12,7 @@ const postSchema = z.object({
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     global: { headers: { Authorization: authHeader } },
   });
 

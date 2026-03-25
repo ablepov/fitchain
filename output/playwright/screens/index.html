@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fitchain Current State</title>
+    <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef2f7;
+        --panel: #ffffff;
+        --border: #d7dee8;
+        --text: #182230;
+        --muted: #5f6b7a;
+        --shadow: 0 24px 48px rgba(24, 34, 48, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 1820px;
+        background:
+          radial-gradient(circle at top left, rgba(113, 170, 255, 0.18), transparent 28%),
+          radial-gradient(circle at top right, rgba(115, 205, 155, 0.16), transparent 24%),
+          var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", Arial, sans-serif;
+      }
+
+      .wrap {
+        max-width: 1840px;
+        margin: 0 auto;
+        padding: 56px 48px 72px;
+      }
+
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 32px;
+        margin-bottom: 36px;
+      }
+
+      .hero h1 {
+        margin: 0 0 10px;
+        font-size: 44px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .hero p {
+        margin: 0;
+        max-width: 760px;
+        font-size: 18px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .meta {
+        padding: 14px 18px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+        backdrop-filter: blur(12px);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 24px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+
+      .card header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: start;
+        padding: 18px 20px 14px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #edf2ff;
+        color: #3355aa;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .card h2 {
+        margin: 10px 0 6px;
+        font-size: 22px;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+      }
+
+      .card p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .route {
+        padding-top: 8px;
+        color: #3355aa;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .shot {
+        margin: 0 16px 16px;
+        border-radius: 18px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: #f8fafc;
+      }
+
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="hero">
+        <div>
+          <h1>Fitchain Current State</h1>
+          <p>
+            Current desktop screens captured from the local Next.js project. Authenticated views use mocked
+            Supabase session and sample workout data because the repository does not include a local
+            <code>.env.local</code> or live credentials.
+          </p>
+        </div>
+        <div class="meta">
+          Local source: <strong>127.0.0.1:3000</strong><br />
+          Gallery host: <strong>127.0.0.1:8765</strong><br />
+          Captured states: <strong>8</strong>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <header>
+            <div>
+              <span class="eyebrow">Auth</span>
+              <h2>Sign in</h2>
+              <p>Base authentication form for unauthenticated users.</p>
+            </div>
+            <div class="route">/auth</div>
+          </header>
+          <div class="shot"><img src="./01-auth-form.png" alt="Auth sign in" /></div>
+        </article>
+
+        <article class="card">
+          <header>
+            <div>
+              <span class="eyebrow">Auth</span>
+              <h2>Signed in state</h2>
+              <p>Authenticated branch shown when the user reopens the auth route.</p>
+            </div>
+            <div class="route">/auth</div>
+          </header>
+          <div class="shot"><img src="./02-auth-authed.png" alt="Auth signed in" /></div>
+        </article>
+
+        <article class="card">
+          <header>
+            <div>
+              <span class="eyebrow">Home</span>
+              <h2>Exercises</h2>
+              <p>Main workout list with charts, quick buttons, goals, and last-set status.</p>
+            </div>
+            <div class="route">/</div>
+          </header>
+          <div class="shot"><img src="./03-home.png" alt="Home exercises" /></div>
+        </article>
+
+        <article class="card">
+          <header>
+            <div>
+              <span class="eyebrow">Dashboard</span>
+              <h2>Summary</h2>
+              <p>Timezone settings and the daily total summary panel.</p>
+            </div>
+            <div class="route">/dashboard</div>
+          </header>
+          <div class="shot"><img src="./04-dashboard.png" alt="Dashboard summary" /></div>
+        </article>
+
+        <article class="card">
+          <header>
+            <div>
+              <span class="eyebrow">Profile</span>
+              <h2>Default state</h2>
+              <p>Profile, timezone selector, and the current exercise management list.</p>
+            </div>
+            <div class="route">/profile</div>
+          </header>
+          <div class="shot"><img src="./05-profile-default.png" alt="Profile default" /></div>
+        </article>
+
+        <article class="card">
+          <header>
+            <div>
+              <span class="eyebrow">Profile</span>
+              <h2>Create exercise</h2>
+              <p>Inline creation form opened from the management section.</p>
+            </div>
+            <div class="route">/profile</div>
+          </header>
+          <div class="shot"><img src="./06-profile-create.png" alt="Profile create exercise" /></div>
+        </article>
+
+        <article class="card">
+          <header>
+            <div>
+              <span class="eyebrow">Profile</span>
+              <h2>Edit exercise</h2>
+              <p>Inline editing state for an existing workout goal.</p>
+            </div>
+            <div class="route">/profile</div>
+          </header>
+          <div class="shot"><img src="./07-profile-edit.png" alt="Profile edit exercise" /></div>
+        </article>
+
+        <article class="card">
+          <header>
+            <div>
+              <span class="eyebrow">Profile</span>
+              <h2>Delete confirmation</h2>
+              <p>Modal confirmation shown before destructive removal.</p>
+            </div>
+            <div class="route">/profile</div>
+          </header>
+          <div class="shot"><img src="./08-profile-delete.png" alt="Profile delete confirmation" /></div>
+        </article>
+      </section>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,43 @@
+
+> fitchain@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.5.4 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.77:3000
+
+ ✓ Starting...
+Creating turbopack project { dir: 'C:\\repositories\\fitchain', testMode: true }
+ ✓ Ready in 3.5s
+ ○ Compiling /auth ...
+ ✓ Compiled /auth in 5.1s
+✅ Все переменные окружения настроены корректно
+✅ Все переменные окружения настроены корректно
+ GET /auth 200 in 5776ms
+ GET /auth 200 in 198ms
+ ✓ Compiled / in 349ms
+ GET / 200 in 505ms
+ ✓ Compiled /dashboard in 312ms
+ GET /dashboard 200 in 438ms
+ ✓ Compiled /profile in 350ms
+ GET /profile 200 in 485ms
+ GET /profile 200 in 170ms
+ GET /auth 200 in 174ms
+ GET /auth 200 in 174ms
+ GET / 200 in 152ms
+ GET /dashboard 200 in 143ms
+ GET /profile 200 in 142ms
+ GET /profile 200 in 157ms
+ GET /auth 200 in 171ms
+ GET /auth 200 in 197ms
+ GET / 200 in 235ms
+ GET /dashboard 200 in 182ms
+ GET /profile 200 in 178ms
+ GET /profile 200 in 181ms
+ GET /profile 200 in 170ms
+ GET /profile 200 in 179ms
+ GET /profile 200 in 205ms
+ ✓ Compiled in 228ms
+   Reload env: .env.local
+ ✓ Compiled in 1399ms
+[?25h
