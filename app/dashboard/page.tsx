@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Header title="Dashboard" />
+      <Header title="Дашборд" />
       <main className="p-6 space-y-6 max-w-2xl mx-auto">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           {email && (
