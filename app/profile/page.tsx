@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { logger } from "@/lib/logger";
 import { Header } from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 const timezones = [
   "Europe/Moscow",
@@ -16,7 +20,7 @@ const timezones = [
 
 type Exercise = {
   id: string;
-  type: 'pullups' | 'pushups' | 'squats';
+  type: "pullups" | "pushups" | "squats";
   goal: number;
 };
 
@@ -28,20 +32,17 @@ export default function ProfilePage() {
   const [savingTz, setSavingTz] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Состояние для упражнений
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  // Состояние для формы создания упражнения
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newExercise, setNewExercise] = useState({ type: '', goal: '' });
+  const [newExercise, setNewExercise] = useState({ type: "", goal: "" });
   const [formErrors, setFormErrors] = useState<{ type?: string; goal?: string }>({});
   const [creatingNew, setCreatingNew] = useState(false);
 
-  // Состояние для формы редактирования упражнения
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
-  const [editForm, setEditForm] = useState({ type: '', goal: '' });
+  const [editForm, setEditForm] = useState({ type: "", goal: "" });
   const [editErrors, setEditErrors] = useState<{ type?: string; goal?: string }>({});
   const [updating, setUpdating] = useState(false);
 
@@ -55,7 +56,6 @@ export default function ProfilePage() {
       }
       setEmail(user.email ?? null);
 
-      // Загружаем профиль
       const { data: profile } = await supabase
         .from("profiles")
         .select("timezone")
@@ -63,7 +63,6 @@ export default function ProfilePage() {
         .maybeSingle();
       if (profile?.timezone) setTimezone(profile.timezone);
 
-      // Загружаем упражнения для механизма создания базовых
       const { data: ex } = await supabase
         .from("exercises")
         .select("id,type,goal")
@@ -85,13 +84,10 @@ export default function ProfilePage() {
     const { data: me } = await supabase.auth.getUser();
     const userId = me.user?.id;
     if (!userId) return;
-    const { error } = await supabase
-      .from("profiles")
-      .upsert({ user_id: userId, timezone });
+    const { error } = await supabase.from("profiles").upsert({ user_id: userId, timezone });
     setSavingTz(false);
     setMessage(error ? `Ошибка: ${error.message}` : "Таймзона сохранена");
   }
-
 
   async function deleteExercise(exerciseId: string, exerciseType: string) {
     setDeletingId(exerciseId);
@@ -101,7 +97,7 @@ export default function ProfilePage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
       const res = await fetch(`/api/exercises/${exerciseId}`, {
         method: "DELETE",
@@ -114,12 +110,15 @@ export default function ProfilePage() {
         return;
       }
 
-      // Обновляем локальный список упражнений
-      setExercises(prev => prev.filter(e => e.id !== exerciseId));
+      setExercises((prev) => prev.filter((item) => item.id !== exerciseId));
       setMessage(`Упражнение "${exerciseType}" удалено`);
     } catch (error) {
-      logger.warn('Ошибка удаления упражнения', 'ProfilePage', error instanceof Error ? error : new Error(String(error)));
-      setMessage('Ошибка сети при удалении');
+      logger.warn(
+        "Ошибка удаления упражнения",
+        "ProfilePage",
+        error instanceof Error ? error : new Error(String(error))
+      );
+      setMessage("Ошибка сети при удалении");
     } finally {
       setDeletingId(null);
     }
@@ -136,30 +135,30 @@ export default function ProfilePage() {
   function validateForm(): boolean {
     const errors: { type?: string; goal?: string } = {};
 
-    // Валидация названия
     if (!newExercise.type.trim()) {
-      errors.type = 'Название обязательно';
+      errors.type = "Название обязательно";
     } else if (newExercise.type.trim().length < 2) {
-      errors.type = 'Название должно содержать минимум 2 символа';
+      errors.type = "Название должно содержать минимум 2 символа";
     } else if (newExercise.type.trim().length > 100) {
-      errors.type = 'Название не должно превышать 100 символов';
+      errors.type = "Название не должно превышать 100 символов";
     } else if (!/^[a-zA-Zа-яА-Я0-9\s]+$/.test(newExercise.type.trim())) {
-      errors.type = 'Название может содержать только буквы, цифры и пробелы';
+      errors.type = "Название может содержать только буквы, цифры и пробелы";
     }
 
-    // Проверка уникальности названия
-    if (newExercise.type.trim() && exercises.some(e => e.type.toLowerCase() === newExercise.type.trim().toLowerCase())) {
-      errors.type = 'Упражнение с таким названием уже существует';
+    if (
+      newExercise.type.trim() &&
+      exercises.some((exercise) => exercise.type.toLowerCase() === newExercise.type.trim().toLowerCase())
+    ) {
+      errors.type = "Упражнение с таким названием уже существует";
     }
 
-    // Валидация цели
     const goalNum = parseInt(newExercise.goal);
     if (!newExercise.goal.trim()) {
-      errors.goal = 'Цель обязательна';
+      errors.goal = "Цель обязательна";
     } else if (isNaN(goalNum) || goalNum <= 0) {
-      errors.goal = 'Цель должна быть числом больше 0';
+      errors.goal = "Цель должна быть числом больше 0";
     } else if (goalNum > 10000) {
-      errors.goal = 'Цель не должна превышать 10000';
+      errors.goal = "Цель не должна превышать 10000";
     }
 
     setFormErrors(errors);
@@ -176,14 +175,14 @@ export default function ProfilePage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-      const res = await fetch(`/api/exercises`, {
+      const res = await fetch("/api/exercises", {
         method: "POST",
         headers,
         body: JSON.stringify({
           type: newExercise.type.trim(),
-          goal: parseInt(newExercise.goal)
+          goal: parseInt(newExercise.goal),
         }),
       });
 
@@ -194,16 +193,18 @@ export default function ProfilePage() {
       }
 
       const createdExercise = await res.json();
-
-      // Обновляем локальный список упражнений
-      setExercises(prev => [...prev, createdExercise.data]);
+      setExercises((prev) => [...prev, createdExercise.data]);
       setMessage(`Упражнение "${newExercise.type.trim()}" создано`);
       setShowCreateForm(false);
-      setNewExercise({ type: '', goal: '' });
+      setNewExercise({ type: "", goal: "" });
       setFormErrors({});
     } catch (error) {
-      logger.warn('Ошибка создания упражнения', 'ProfilePage', error instanceof Error ? error : new Error(String(error)));
-      setMessage('Ошибка сети при создании');
+      logger.warn(
+        "Ошибка создания упражнения",
+        "ProfilePage",
+        error instanceof Error ? error : new Error(String(error))
+      );
+      setMessage("Ошибка сети при создании");
     } finally {
       setCreatingNew(false);
     }
@@ -211,13 +212,13 @@ export default function ProfilePage() {
 
   function openCreateForm() {
     setShowCreateForm(true);
-    setNewExercise({ type: '', goal: '' });
+    setNewExercise({ type: "", goal: "" });
     setFormErrors({});
   }
 
   function closeCreateForm() {
     setShowCreateForm(false);
-    setNewExercise({ type: '', goal: '' });
+    setNewExercise({ type: "", goal: "" });
     setFormErrors({});
   }
 
@@ -229,41 +230,38 @@ export default function ProfilePage() {
 
   function cancelEdit() {
     setEditingExercise(null);
-    setEditForm({ type: '', goal: '' });
+    setEditForm({ type: "", goal: "" });
     setEditErrors({});
   }
 
   function validateEditForm(): boolean {
     const errors: { type?: string; goal?: string } = {};
 
-    // Валидация названия
     if (!editForm.type.trim()) {
-      errors.type = 'Название обязательно';
+      errors.type = "Название обязательно";
     } else if (editForm.type.trim().length < 2) {
-      errors.type = 'Название должно содержать минимум 2 символа';
+      errors.type = "Название должно содержать минимум 2 символа";
     } else if (editForm.type.trim().length > 100) {
-      errors.type = 'Название не должно превышать 100 символов';
+      errors.type = "Название не должно превышать 100 символов";
     } else if (!/^[a-zA-Zа-яА-Я0-9\s]+$/.test(editForm.type.trim())) {
-      errors.type = 'Название может содержать только буквы, цифры и пробелы';
+      errors.type = "Название может содержать только буквы, цифры и пробелы";
     }
 
-    // Проверка уникальности названия (только если оно изменилось)
     if (editForm.type.trim() && editingExercise) {
       const currentType = editingExercise.type.toLowerCase();
-      const newType = editForm.type.trim().toLowerCase();
-      if (currentType !== newType && exercises.some(e => e.type.toLowerCase() === newType)) {
-        errors.type = 'Упражнение с таким названием уже существует';
+      const updatedType = editForm.type.trim().toLowerCase();
+      if (currentType !== updatedType && exercises.some((exercise) => exercise.type.toLowerCase() === updatedType)) {
+        errors.type = "Упражнение с таким названием уже существует";
       }
     }
 
-    // Валидация цели
     const goalNum = parseInt(editForm.goal);
     if (!editForm.goal.trim()) {
-      errors.goal = 'Цель обязательна';
+      errors.goal = "Цель обязательна";
     } else if (isNaN(goalNum) || goalNum <= 0) {
-      errors.goal = 'Цель должна быть числом больше 0';
+      errors.goal = "Цель должна быть числом больше 0";
     } else if (goalNum > 10000) {
-      errors.goal = 'Цель не должна превышать 10000';
+      errors.goal = "Цель не должна превышать 10000";
     }
 
     setEditErrors(errors);
@@ -280,14 +278,14 @@ export default function ProfilePage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
       const res = await fetch(`/api/exercises/${editingExercise.id}`, {
         method: "PUT",
         headers,
         body: JSON.stringify({
           type: editForm.type.trim(),
-          goal: parseInt(editForm.goal)
+          goal: parseInt(editForm.goal),
         }),
       });
 
@@ -298,16 +296,16 @@ export default function ProfilePage() {
       }
 
       const updatedExercise = await res.json();
-
-      // Обновляем локальный список упражнений
-      setExercises(prev => prev.map(e =>
-        e.id === editingExercise.id ? updatedExercise.data : e
-      ));
+      setExercises((prev) => prev.map((item) => (item.id === editingExercise.id ? updatedExercise.data : item)));
       setMessage(`Упражнение "${editForm.type.trim()}" обновлено`);
       cancelEdit();
     } catch (error) {
-      logger.warn('Ошибка обновления упражнения', 'ProfilePage', error instanceof Error ? error : new Error(String(error)));
-      setMessage('Ошибка сети при обновлении');
+      logger.warn(
+        "Ошибка обновления упражнения",
+        "ProfilePage",
+        error instanceof Error ? error : new Error(String(error))
+      );
+      setMessage("Ошибка сети при обновлении");
     } finally {
       setUpdating(false);
     }
@@ -315,8 +313,8 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="p-6">
-        <p className="text-sm text-gray-500">Загрузка...</p>
+      <main className="app-screen">
+        <p className="text-sm text-zinc-500">Загрузка...</p>
       </main>
     );
   }
@@ -324,245 +322,225 @@ export default function ProfilePage() {
   return (
     <>
       <Header title="Профиль" />
-      <main className="p-6 space-y-6 max-w-2xl mx-auto">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          {email && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600" aria-label="Email пользователя">{email}</span>
-              <button className="px-3 py-2 rounded border" onClick={onSignOut}>Выйти</button>
-            </div>
-          )}
-        </div>
+      <main className="app-screen">
+        <div className="screen-stack">
+          <Card>
+            <CardHeader>
+              <CardTitle>Профиль</CardTitle>
+              <CardDescription>Настройки аккаунта и управление упражнениями в едином тёмном интерфейсе.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {email && (
+                <div className="rounded-2xl border border-zinc-900 bg-black/70 px-4 py-3">
+                  <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Email</div>
+                  <div className="mt-2 text-sm text-zinc-200">{email}</div>
+                </div>
+              )}
 
-        <section>
-          <h2 className="font-medium">Часовой пояс</h2>
-          <div className="mt-2 flex gap-2 items-center">
-            <select
-              className="border rounded px-3 py-2"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-            >
-              {timezones.map((tz) => (
-                <option key={tz} value={tz}>{tz}</option>
-              ))}
-            </select>
-            <button
-              disabled={savingTz}
-              className="px-3 py-2 rounded bg-black text-white disabled:opacity-60"
-              onClick={onSaveTimezone}
-            >
-              {savingTz ? "Сохранение..." : "Сохранить"}
-            </button>
-          </div>
-          {message && <p className="text-sm mt-2 text-gray-600">{message}</p>}
-        </section>
-
-        {/* Форма редактирования упражнения */}
-        {editingExercise && (
-          <section className="mt-6 p-4 border rounded-lg bg-blue-50">
-            <h3 className="font-medium mb-3">Редактировать упражнение</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Название упражнения
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-300" htmlFor="profile-timezone">
+                  Часовой пояс
                 </label>
-                <input
-                  type="text"
-                  value={editForm.type}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, type: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    editErrors.type ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Например: Бег, Плавание, Жим гантелей"
-                />
-                {editErrors.type && (
-                  <p className="text-sm text-red-600 mt-1">{editErrors.type}</p>
-                )}
+                <Select id="profile-timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                  {timezones.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </Select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Цель (количество повторений)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.goal}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, goal: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    editErrors.goal ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Например: 50, 100, 200"
-                  min="1"
-                  max="10000"
-                />
-                {editErrors.goal && (
-                  <p className="text-sm text-red-600 mt-1">{editErrors.goal}</p>
-                )}
+              <div className="grid grid-cols-2 gap-2">
+                <Button disabled={savingTz} className="rounded-2xl" onClick={onSaveTimezone}>
+                  {savingTz ? "Сохранение..." : "Сохранить"}
+                </Button>
+                <Button variant="secondary" className="rounded-2xl" onClick={onSignOut}>
+                  Выйти
+                </Button>
               </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={updateExercise}
-                  disabled={updating}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {updating ? "Сохранение..." : "Сохранить изменения"}
-                </button>
-                <button
-                  onClick={cancelEdit}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-                >
-                  Отмена
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
+              {message && (
+                <div className="rounded-2xl border border-zinc-900 bg-zinc-950 px-3 py-2 text-sm text-zinc-400">
+                  {message}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        <section>
-          <h2 className="font-medium">Управление упражнениями</h2>
-          <div className="mt-2">
-            <button
-              onClick={openCreateForm}
-              className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
-            >
-              Создать новое упражнение
-            </button>
-            <p className="text-sm text-gray-600 mt-2">
-              Создайте собственное упражнение с указанием названия и цели. Например: Бег, Плавание, Жим гантелей.
-            </p>
-          </div>
-
-          {/* Форма создания нового упражнения */}
-          {showCreateForm && (
-            <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-              <h3 className="font-medium mb-3">Создать новое упражнение</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+          {editingExercise && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Редактировать упражнение</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300" htmlFor="edit-type">
                     Название упражнения
                   </label>
-                  <input
+                  <Input
+                    id="edit-type"
                     type="text"
-                    value={newExercise.type}
-                    onChange={(e) => setNewExercise(prev => ({ ...prev, type: e.target.value }))}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      formErrors.type ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    value={editForm.type}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, type: e.target.value }))}
                     placeholder="Например: Бег, Плавание, Жим гантелей"
                   />
-                  {formErrors.type && (
-                    <p className="text-sm text-red-600 mt-1">{formErrors.type}</p>
-                  )}
+                  {editErrors.type && <p className="text-sm text-red-200">{editErrors.type}</p>}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Цель (количество повторений)
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300" htmlFor="edit-goal">
+                    Цель
                   </label>
-                  <input
+                  <Input
+                    id="edit-goal"
                     type="number"
-                    value={newExercise.goal}
-                    onChange={(e) => setNewExercise(prev => ({ ...prev, goal: e.target.value }))}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      formErrors.goal ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Например: 50, 100, 200"
+                    value={editForm.goal}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, goal: e.target.value }))}
+                    placeholder="Например: 50"
                     min="1"
                     max="10000"
                   />
-                  {formErrors.goal && (
-                    <p className="text-sm text-red-600 mt-1">{formErrors.goal}</p>
-                  )}
+                  {editErrors.goal && <p className="text-sm text-red-200">{editErrors.goal}</p>}
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={createNewExercise}
-                    disabled={creatingNew}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
-                  >
-                    {creatingNew ? "Создание..." : "Создать упражнение"}
-                  </button>
-                  <button
-                    onClick={closeCreateForm}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-                  >
+                <div className="grid grid-cols-2 gap-2">
+                  <Button className="rounded-2xl" onClick={updateExercise} disabled={updating}>
+                    {updating ? "Сохранение..." : "Сохранить"}
+                  </Button>
+                  <Button variant="secondary" className="rounded-2xl" onClick={cancelEdit}>
                     Отмена
-                  </button>
+                  </Button>
                 </div>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section>
-          <h2 className="font-medium">Текущие упражнения</h2>
-          {exercises.length === 0 ? (
-            <p className="text-sm text-gray-500 mt-2">Пока нет упражнений</p>
-          ) : (
-            <ul className="mt-2 space-y-2">
-              {exercises.map((exercise) => (
-                <li key={exercise.id} className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <span className="font-medium capitalize">{exercise.type}</span>
-                    <span className="text-sm text-gray-600 ml-2">Цель: {exercise.goal}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => startEdit(exercise)}
-                      className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                      title="Редактировать упражнение"
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      onClick={() => confirmDelete(exercise)}
-                      disabled={deletingId === exercise.id}
-                      className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
-                      title="Удалить упражнение"
-                    >
-                      {deletingId === exercise.id ? "Удаление..." : "Удалить"}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Модальное окно подтверждения удаления */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Управление упражнениями</CardTitle>
+              <CardDescription>Создание, редактирование и удаление упражнений без смены контекста.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button className="w-full rounded-2xl" onClick={openCreateForm}>
+                Создать новое упражнение
+              </Button>
+
+              {showCreateForm && (
+                <div className="space-y-4 rounded-2xl border border-zinc-900 bg-black/70 p-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-300" htmlFor="new-type">
+                      Название упражнения
+                    </label>
+                    <Input
+                      id="new-type"
+                      type="text"
+                      value={newExercise.type}
+                      onChange={(e) => setNewExercise((prev) => ({ ...prev, type: e.target.value }))}
+                      placeholder="Например: Бег, Плавание, Жим гантелей"
+                    />
+                    {formErrors.type && <p className="text-sm text-red-200">{formErrors.type}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-300" htmlFor="new-goal">
+                      Цель
+                    </label>
+                    <Input
+                      id="new-goal"
+                      type="number"
+                      value={newExercise.goal}
+                      onChange={(e) => setNewExercise((prev) => ({ ...prev, goal: e.target.value }))}
+                      placeholder="Например: 100"
+                      min="1"
+                      max="10000"
+                    />
+                    {formErrors.goal && <p className="text-sm text-red-200">{formErrors.goal}</p>}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button className="rounded-2xl" onClick={createNewExercise} disabled={creatingNew}>
+                      {creatingNew ? "Создание..." : "Создать"}
+                    </Button>
+                    <Button variant="secondary" className="rounded-2xl" onClick={closeCreateForm}>
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Текущие упражнения</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {exercises.length === 0 ? (
+                <p className="text-sm text-zinc-500">Пока нет упражнений</p>
+              ) : (
+                <ul className="space-y-3">
+                  {exercises.map((exercise) => (
+                    <li
+                      key={exercise.id}
+                      className="flex flex-col gap-3 rounded-2xl border border-zinc-900 bg-black/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold capitalize text-zinc-100">{exercise.type}</div>
+                        <div className="mt-1 text-sm text-zinc-500">Цель: {exercise.goal}</div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:flex">
+                        <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => startEdit(exercise)}>
+                          Редактировать
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="rounded-xl"
+                          onClick={() => confirmDelete(exercise)}
+                          disabled={deletingId === exercise.id}
+                        >
+                          {deletingId === exercise.id ? "Удаление..." : "Удалить"}
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
           {deleteConfirm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-lg max-w-sm mx-4">
-                <h3 className="text-lg font-semibold mb-4">Подтвердите удаление</h3>
-                <p className="text-gray-600 mb-6">
-                  Вы действительно хотите удалить упражнение "{exercises.find(e => e.id === deleteConfirm)?.type}"?
-                  Это действие нельзя отменить.
-                </p>
-                <div className="flex gap-3 justify-end">
-                  <button
-                    onClick={cancelDelete}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-                  >
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-4 sm:items-center">
+              <Card className="w-full max-w-sm">
+                <CardHeader>
+                  <CardTitle>Подтвердите удаление</CardTitle>
+                  <CardDescription>
+                    Вы действительно хотите удалить упражнение "
+                    {exercises.find((exercise) => exercise.id === deleteConfirm)?.type}"?
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-2">
+                  <Button variant="secondary" className="rounded-2xl" onClick={cancelDelete}>
                     Отмена
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="rounded-2xl"
                     onClick={() => {
-                      const exercise = exercises.find(e => e.id === deleteConfirm);
+                      const exercise = exercises.find((item) => item.id === deleteConfirm);
                       if (exercise) {
                         deleteExercise(exercise.id, exercise.type);
                         setDeleteConfirm(null);
                       }
                     }}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                   >
                     Удалить
-                  </button>
-                </div>
-              </div>
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           )}
-        </section>
+        </div>
       </main>
     </>
   );

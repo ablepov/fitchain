@@ -13,7 +13,7 @@ export function MiniChart({
   exerciseId,
   limit = 20,
   refreshTrigger,
-  onLastSetTime
+  onLastSetTime,
 }: {
   exerciseId: string;
   limit?: number;
@@ -22,7 +22,6 @@ export function MiniChart({
 }) {
   const [reps, setReps] = useState<number[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastSetTime, setLastSetTime] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -31,10 +30,10 @@ export function MiniChart({
       try {
         setError(null);
         const { data, error: fetchError } = await supabase
-          .from('sets')
-          .select('reps, created_at')
-          .eq('exercise_id', exerciseId)
-          .order('created_at', { ascending: false })
+          .from("sets")
+          .select("reps, created_at")
+          .eq("exercise_id", exerciseId)
+          .order("created_at", { ascending: false })
           .limit(limit);
 
         if (fetchError) {
@@ -44,26 +43,21 @@ export function MiniChart({
         if (!isMounted) return;
 
         const setData: SetData[] = data || [];
-        const arr: number[] = setData.map(r => r.reps).reverse();
-
-        // Получаем время последнего подхода
+        const values: number[] = setData.map((item) => item.reps).reverse();
         const lastSet = setData[0];
-        const lastTime = lastSet ? lastSet.created_at : null;
 
-        setReps(arr);
-        setLastSetTime(lastTime);
-        if (onLastSetTime) {
-          onLastSetTime(lastTime);
-        }
+        setReps(values);
+        onLastSetTime?.(lastSet ? lastSet.created_at : null);
       } catch (e) {
         if (!isMounted) return;
-        logger.error('Ошибка загрузки данных графика', 'MiniChart', e instanceof Error ? e : new Error(String(e)));
-        setError('Не удалось загрузить данные графика');
+        logger.error(
+          "Ошибка загрузки данных графика",
+          "MiniChart",
+          e instanceof Error ? e : new Error(String(e))
+        );
+        setError("Не удалось загрузить данные графика");
         setReps([]);
-        setLastSetTime(null);
-        if (onLastSetTime) {
-          onLastSetTime(null);
-        }
+        onLastSetTime?.(null);
       }
     })();
 
@@ -72,102 +66,94 @@ export function MiniChart({
     };
   }, [exerciseId, limit, refreshTrigger, onLastSetTime]);
 
-  // Адаптивная высота графика
-  const h = 64, pad = 8;
+  const height = 64;
+  const pad = 8;
 
   if (reps === null) {
-    return <div className="animate-pulse h-16 bg-gray-100 rounded-lg w-full" aria-label="Загрузка графика" />;
+    return <div className="h-16 w-full animate-pulse rounded-2xl border border-zinc-900 bg-zinc-950" aria-label="Загрузка графика" />;
   }
 
   if (error) {
     return (
-      <div className="h-16 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center w-full">
-        <span className="text-sm text-red-600">Ошибка загрузки</span>
+      <div className="flex h-16 w-full items-center justify-center rounded-2xl border border-red-950/70 bg-zinc-950">
+        <span className="text-sm text-red-200">Ошибка загрузки</span>
       </div>
     );
   }
 
   if (reps.length === 0) {
     return (
-      <div className="h-16 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center w-full">
-        <span className="text-sm text-gray-500">Нет данных для графика</span>
+      <div className="flex h-16 w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-950">
+        <span className="text-sm text-zinc-500">Нет данных для графика</span>
       </div>
     );
   }
 
-  // Подготавливаем данные для графика
   const max = Math.max(1, ...reps);
   const chartWidth = 100;
-  const chartHeight = h - pad * 2;
+  const chartHeight = height - pad * 2;
 
-  // Создаем точки для простой и понятной визуализации
   const points = reps.map((value, index) => {
     const x = pad + (index * (chartWidth - pad * 2)) / Math.max(1, reps.length - 1);
     const y = pad + chartHeight - (value / max) * chartHeight;
-    return { x, y, value };
+    return { x, y };
   });
 
-  // Создаем path для линии графика
-  const pathData = points.map((point, index) =>
-    `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
-  ).join(' ');
+  const pathData = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
 
   return (
-    <div className="w-full h-16 bg-gray-50 rounded-lg border border-gray-200 p-2">
+    <div className="h-16 w-full rounded-2xl border border-zinc-900 bg-black/80 p-2">
       <svg
         width="100%"
         height="100%"
-        viewBox={`0 0 ${chartWidth} ${h}`}
+        viewBox={`0 0 ${chartWidth} ${height}`}
         role="img"
         aria-label="График последних подходов"
         className="overflow-visible"
       >
-        {/* Градиент для заливки под линией */}
         <defs>
           <linearGradient id={`areaGradient-${exerciseId}`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
+            <stop offset="0%" stopColor="#fafafa" stopOpacity={0.18} />
+            <stop offset="100%" stopColor="#fafafa" stopOpacity={0.02} />
           </linearGradient>
         </defs>
 
-        {/* Заливка области под графиком */}
-        <polygon
-          points={`${pad},${pad + chartHeight} ${points.map(p => `${p.x},${p.y}`).join(' ')} ${points[points.length - 1]?.x || chartWidth - pad},${pad + chartHeight}`}
-          fill={`url(#areaGradient-${exerciseId})`}
-        />
-
-        {/* Основная линия графика */}
-        <path
-          d={pathData}
-          fill="none"
-          stroke="#2563eb"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {/* Точки данных */}
-        {points.map((point, index) => (
-          <circle
-            key={index}
-            cx={point.x}
-            cy={point.y}
-            r={index === points.length - 1 ? "2" : "1.5"}
-            fill="#2563eb"
-            className={index === points.length - 1 ? "animate-pulse" : ""}
-          />
-        ))}
-
-        {/* Простая горизонтальная линия сетки */}
         <line
           x1={pad}
           y1={pad + chartHeight / 2}
           x2={chartWidth - pad}
           y2={pad + chartHeight / 2}
-          stroke="#e5e7eb"
-          strokeWidth="0.5"
-          opacity="0.6"
+          stroke="#27272a"
+          strokeWidth="0.6"
         />
+
+        <polygon
+          points={`${pad},${pad + chartHeight} ${points.map((p) => `${p.x},${p.y}`).join(" ")} ${
+            points[points.length - 1]?.x || chartWidth - pad
+          },${pad + chartHeight}`}
+          fill={`url(#areaGradient-${exerciseId})`}
+        />
+
+        <path
+          d={pathData}
+          fill="none"
+          stroke="#f4f4f5"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {points.map((point, index) => (
+          <circle
+            key={index}
+            cx={point.x}
+            cy={point.y}
+            r={index === points.length - 1 ? "2.2" : "1.5"}
+            fill={index === points.length - 1 ? "#fafafa" : "#a1a1aa"}
+          />
+        ))}
       </svg>
     </div>
   );

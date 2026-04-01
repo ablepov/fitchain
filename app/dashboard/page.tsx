@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import { Header } from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 
 const timezones = [
   "Europe/Moscow",
@@ -14,8 +17,6 @@ const timezones = [
   "Asia/Tokyo",
 ];
 
-
-
 export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -23,8 +24,6 @@ export default function DashboardPage() {
   const [timezone, setTimezone] = useState<string>("Europe/Moscow");
   const [savingTz, setSavingTz] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -35,15 +34,13 @@ export default function DashboardPage() {
         return;
       }
       setEmail(user.email ?? null);
-      // загрузим профиль
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("timezone")
         .eq("user_id", user.id)
         .maybeSingle();
       if (profile?.timezone) setTimezone(profile.timezone);
-
-
 
       setLoading(false);
     })();
@@ -60,19 +57,15 @@ export default function DashboardPage() {
     const { data: me } = await supabase.auth.getUser();
     const userId = me.user?.id;
     if (!userId) return;
-    const { error } = await supabase
-      .from("profiles")
-      .upsert({ user_id: userId, timezone });
+    const { error } = await supabase.from("profiles").upsert({ user_id: userId, timezone });
     setSavingTz(false);
     setMessage(error ? `Ошибка: ${error.message}` : "Таймзона сохранена");
   }
 
-
-
   if (loading) {
     return (
-      <main className="p-6">
-        <p className="text-sm text-gray-500">Загрузка...</p>
+      <main className="app-screen">
+        <p className="text-sm text-zinc-500">Загрузка...</p>
       </main>
     );
   }
@@ -80,40 +73,54 @@ export default function DashboardPage() {
   return (
     <>
       <Header title="Дашборд" />
-      <main className="p-6 space-y-6 max-w-2xl mx-auto">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          {email && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600" aria-label="Email пользователя">{email}</span>
-              <button className="px-3 py-2 rounded border" onClick={onSignOut}>Выйти</button>
-            </div>
-          )}
+      <main className="app-screen">
+        <div className="screen-stack">
+          <Card>
+            <CardHeader>
+              <CardTitle>Аккаунт</CardTitle>
+              <CardDescription>Базовые настройки профиля и текущая рабочая зона.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {email && (
+                <div className="rounded-2xl border border-zinc-900 bg-black/70 px-4 py-3">
+                  <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Email</div>
+                  <div className="mt-2 text-sm text-zinc-200">{email}</div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300" htmlFor="timezone">
+                    Часовой пояс
+                  </label>
+                  <Select id="timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                    {timezones.map((tz) => (
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button disabled={savingTz} className="rounded-2xl" onClick={onSaveTimezone}>
+                    {savingTz ? "Сохранение..." : "Сохранить"}
+                  </Button>
+                  <Button variant="secondary" className="rounded-2xl" onClick={onSignOut}>
+                    Выйти
+                  </Button>
+                </div>
+              </div>
+
+              {message && (
+                <div className="rounded-2xl border border-zinc-900 bg-zinc-950 px-3 py-2 text-sm text-zinc-400">
+                  {message}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <SummaryPanel timezone={timezone} />
         </div>
-
-        <section>
-          <h2 className="font-medium">Часовой пояс</h2>
-          <div className="mt-2 flex gap-2 items-center">
-            <select
-              className="border rounded px-3 py-2"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-            >
-              {timezones.map((tz) => (
-                <option key={tz} value={tz}>{tz}</option>
-              ))}
-            </select>
-            <button
-              disabled={savingTz}
-              className="px-3 py-2 rounded bg-black text-white disabled:opacity-60"
-              onClick={onSaveTimezone}
-            >
-              {savingTz ? "Сохранение..." : "Сохранить"}
-            </button>
-          </div>
-          {message && <p className="text-sm mt-2 text-gray-600">{message}</p>}
-        </section>
-
-        <SummaryPanel />
       </main>
     </>
   );

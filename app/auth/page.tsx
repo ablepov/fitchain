@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Header } from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -33,8 +36,7 @@ export default function AuthPage() {
     router.push("/dashboard");
   }
 
-  async function onSignUp(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSignUp() {
     setLoading(true);
     setError(null);
     const { error: err } = await supabase.auth.signUp({ email, password });
@@ -54,46 +56,85 @@ export default function AuthPage() {
 
   return (
     <>
-      <Header title="Вход" />
-      <main className="p-6 max-w-sm mx-auto">
-      {authed ? (
-        <div className="mt-4 space-y-3">
-          <p className="text-sm text-gray-600">Вы вошли. Перейти к дашборду.</p>
-          <div className="flex gap-2">
-            <button className="px-3 py-2 rounded bg-black text-white" onClick={() => router.push("/dashboard")}>Dashboard</button>
-            <button className="px-3 py-2 rounded border" onClick={onSignOut}>Выйти</button>
-          </div>
+      <Header title="Авторизация" />
+      <main className="app-screen">
+        <div className="screen-stack">
+          <Card>
+            <CardHeader>
+              <CardTitle>Доступ к аккаунту</CardTitle>
+              <CardDescription>Вход и регистрация без лишних действий, в компактном мобильном формате.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {authed ? (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-zinc-900 bg-black/70 px-4 py-3 text-sm text-zinc-300">
+                    Вы уже вошли. Можно продолжить тренировку или выйти из текущей сессии.
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button className="w-full rounded-2xl" onClick={() => router.push("/dashboard")}>
+                      Открыть дашборд
+                    </Button>
+                    <Button variant="secondary" className="w-full rounded-2xl" onClick={onSignOut}>
+                      Выйти
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <form className="space-y-4" onSubmit={onSignIn}>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-300" htmlFor="email">
+                      Email
+                    </label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-300" htmlFor="password">
+                      Пароль
+                    </label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Введите пароль"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="rounded-2xl border border-red-950/80 bg-zinc-950 px-3 py-2 text-sm text-red-200">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button disabled={loading} className="w-full rounded-2xl" type="submit">
+                      {loading ? "Входим..." : "Войти"}
+                    </Button>
+                    <Button
+                      disabled={loading}
+                      variant="secondary"
+                      className="w-full rounded-2xl"
+                      type="button"
+                      onClick={onSignUp}
+                    >
+                      {loading ? "Регистрация..." : "Зарегистрироваться"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      ) : (
-        <form className="mt-4 space-y-3" onSubmit={onSignIn}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-            required
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex gap-2">
-            <button disabled={loading} className="px-3 py-2 rounded bg-black text-white" type="submit">
-              {loading ? "Входим..." : "Войти"}
-            </button>
-            <button disabled={loading} className="px-3 py-2 rounded border" onClick={onSignUp}>
-              {loading ? "Регистрация..." : "Зарегистрироваться"}
-            </button>
-          </div>
-        </form>
-      )}
-    </main>
+      </main>
     </>
   );
 }

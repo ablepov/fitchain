@@ -1,28 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface HeaderProps {
   title?: string;
   showBackButton?: boolean;
 }
 
+const navItems = [
+  { href: "/", label: "Главная" },
+  { href: "/dashboard", label: "Дашборд" },
+  { href: "/profile", label: "Профиль" },
+];
+
 export function Header({ title, showBackButton = false }: HeaderProps) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ email?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      setUser(currentUser);
       setLoading(false);
     };
     getUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -36,108 +50,76 @@ export function Header({ title, showBackButton = false }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Левая часть - Логотип и навигация */}
-          <div className="flex items-center">
-            {showBackButton && (
-              <button
-                onClick={() => router.back()}
-                className="mr-3 p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
-            <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-gray-900">Fitchain</h1>
+    <header className="sticky top-0 z-50 border-b border-zinc-950/90 bg-black/90 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-2xl flex-col gap-3 px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3">
+          {showBackButton && (
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-10 rounded-full"
+              onClick={() => router.back()}
+              aria-label="Назад"
+            >
+              <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} />
+              </svg>
+            </Button>
+          )}
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold uppercase tracking-[0.24em] text-zinc-500">Fitchain</span>
+              <Badge className="border-zinc-900 bg-zinc-950 text-zinc-500">mobile</Badge>
             </div>
-            <nav className="ml-8 hidden sm:block">
-              <div className="flex space-x-1">
-                <button
-                  onClick={() => router.push("/")}
-                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-900 hover:bg-gray-100"
-                >
-                  Главная
-                </button>
-                <button
-                  onClick={() => router.push("/dashboard")}
-                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-900 hover:bg-gray-100"
-                >
-                  Дашборд
-                </button>
-                <button
-                  onClick={() => router.push("/profile")}
-                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-900 hover:bg-gray-100"
-                >
-                  Профиль
-                </button>
-              </div>
-            </nav>
+            {title ? (
+              <h1 className="mt-1 text-lg font-semibold text-zinc-50">{title}</h1>
+            ) : (
+              <p className="mt-1 text-sm text-zinc-500">Компактный трекер тренировок</p>
+            )}
           </div>
 
-          {/* Правая часть - Профиль пользователя */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-2">
             {loading ? (
-              <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="h-10 w-20 animate-pulse rounded-full border border-zinc-900 bg-zinc-950" />
             ) : user ? (
-              <div className="flex items-center space-x-3">
-                <div className="text-sm">
-                  <p className="text-gray-900 font-medium">{user.email}</p>
+              <>
+                <div className="hidden max-w-40 truncate text-right text-xs text-zinc-500 sm:block">
+                  {user.email}
                 </div>
-                <button
-                  onClick={handleSignOut}
-                  className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-300"
-                >
+                <Button variant="secondary" size="sm" className="rounded-full" onClick={handleSignOut}>
                   Выйти
-                </button>
-              </div>
+                </Button>
+              </>
             ) : (
-              <button
-                onClick={() => router.push("/auth")}
-                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-black hover:bg-gray-800"
-              >
+              <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/auth")}>
                 Войти
-              </button>
+              </Button>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Мобильное меню */}
-      <div className="sm:hidden border-t border-gray-200">
-        <div className="px-2 pt-2 pb-3 space-y-1">
-          <button
-            onClick={() => router.push("/")}
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-gray-100 w-full text-left"
-          >
-            Главная
-          </button>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-gray-100 w-full text-left"
-          >
-            Дашборд
-          </button>
-          <button
-            onClick={() => router.push("/profile")}
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-gray-100 w-full text-left"
-          >
-            Профиль
-          </button>
-        </div>
+        <nav className="grid grid-cols-3 gap-2" aria-label="Основная навигация">
+          {navItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <button
+                key={item.href}
+                onClick={() => router.push(item.href)}
+                className={cn(
+                  "rounded-2xl border px-3 py-3 text-sm font-medium transition-colors",
+                  active
+                    ? "border-zinc-700 bg-zinc-100 text-black"
+                    : "border-zinc-900 bg-zinc-950 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+                )}
+                aria-current={active ? "page" : undefined}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
       </div>
-
-      {/* Заголовок страницы (если указан) */}
-      {title && (
-        <div className="border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
