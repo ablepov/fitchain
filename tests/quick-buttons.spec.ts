@@ -203,7 +203,7 @@ test.describe("QuickButtons buffer flow", () => {
     });
   });
 
-  test("pauses the countdown for one second without resetting or stacking pauses", async ({ page }) => {
+  test("restarts the one-second pause from the last click without resetting the main timer", async ({ page }) => {
     const harness = await mountQuickButtons(page);
 
     await page.getByTestId("quick-button-plus-one").click();
@@ -221,39 +221,63 @@ test.describe("QuickButtons buffer flow", () => {
     await page.waitForTimeout(900);
     await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/3/);
 
-    await page.waitForTimeout(1_000);
+    await page.waitForTimeout(400);
     await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/2/);
     expect(harness.postedBodies).toHaveLength(0);
 
-    await page.waitForTimeout(2_400);
+    await page.waitForTimeout(2_900);
     await expect.poll(() => harness.postedBodies.length).toBe(1);
     expect(harness.postedBodies[0]?.reps).toBe(3);
   });
 
-  test("pauses the countdown for one second when correcting with -1", async ({ page }) => {
+  test("restarts the pause on each -1 so several quick corrections are possible", async ({ page }) => {
+    const harness = await mountQuickButtons(page, { historyReps: [8, 8, 8] });
+
+    await page.getByTestId("quick-button-plus-8").click();
+    await page.waitForTimeout(3_100);
+    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/2/);
+
+    await page.getByTestId("quick-button-minus-one").click();
+    await expect(page.getByTestId("quick-buffer-value")).toHaveText("+7");
+    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/2/);
+
+    await page.waitForTimeout(700);
+    await page.getByTestId("quick-button-minus-one").click();
+    await expect(page.getByTestId("quick-buffer-value")).toHaveText("+6");
+    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/2/);
+
+    await page.waitForTimeout(700);
+    await page.getByTestId("quick-button-minus-one").click();
+    await expect(page.getByTestId("quick-buffer-value")).toHaveText("+5");
+    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/2/);
+
+    await page.waitForTimeout(800);
+    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/2/);
+
+    await page.waitForTimeout(500);
+    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/2/);
+    expect(harness.postedBodies).toHaveLength(0);
+
+    await page.waitForTimeout(2_100);
+    await expect.poll(() => harness.postedBodies.length).toBe(1);
+    expect(harness.postedBodies[0]?.reps).toBe(5);
+  });
+
+  test("keeps variant B behavior when the buffer is corrected back to zero", async ({ page }) => {
     const harness = await mountQuickButtons(page);
 
     await page.getByTestId("quick-button-plus-one").click();
-    await page.getByTestId("quick-button-plus-one").click();
-    await page.getByTestId("quick-button-plus-one").click();
-    await page.waitForTimeout(2_100);
-    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/3/);
-
     await page.getByTestId("quick-button-minus-one").click();
 
-    await expect(page.getByTestId("quick-buffer-value")).toHaveText("+2");
-    await expect(page.getByTestId("quick-buffer-progress")).toBeVisible();
-    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/3/);
+    await expect(page.getByTestId("quick-buffer-panel")).toBeVisible();
+    await expect(page.getByTestId("quick-buffer-value")).toHaveText("+0");
+    await expect(page.getByTestId("quick-buffer-progress")).toBeHidden();
 
-    await page.waitForTimeout(900);
-    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/3/);
-
-    await page.waitForTimeout(2_900);
+    await page.waitForTimeout(5_300);
     expect(harness.postedBodies).toHaveLength(0);
 
-    await page.waitForTimeout(1_300);
-    await expect.poll(() => harness.postedBodies.length).toBe(1);
-    expect(harness.postedBodies[0]?.reps).toBe(2);
+    await page.getByTestId("quick-button-plus-one").click();
+    await expect(page.getByTestId("quick-buffer-seconds")).toHaveText(/5/);
   });
 
   test("cancels the pending buffer without creating a set", async ({ page }) => {
@@ -269,7 +293,7 @@ test.describe("QuickButtons buffer flow", () => {
     expect(harness.postedBodies).toHaveLength(0);
   });
 
-  test("does not submit when the buffer is corrected back to zero", async ({ page }) => {
+  test("does not submit when the buffer is corrected back to zero from an empty day", async ({ page }) => {
     const harness = await mountQuickButtons(page, { historyReps: [] });
 
     await expect(page.getByTestId("quick-button-minus-one")).toBeDisabled();

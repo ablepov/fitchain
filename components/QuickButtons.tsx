@@ -283,12 +283,6 @@ export function QuickButtons({
     if (!timedBufferActive) return;
 
     const now = Date.now();
-    const pauseUntil = pauseUntilRef.current ?? 0;
-
-    if (pauseUntil > now) {
-      return;
-    }
-
     pauseUntilRef.current = now + BUFFER_PAUSE_MS;
     lastTickRef.current = now;
   }, [timedBufferActive]);
