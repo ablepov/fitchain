@@ -84,7 +84,7 @@ export function QuickButtons({
   const [bufferState, dispatch] = useReducer(bufferReducer, initialBufferState);
   const [currentTimeLeft, setCurrentTimeLeft] = useState(0);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestBufferValueRef = useRef(0);
   const remainingMsRef = useRef(BUFFER_DURATION_MS);
   const pauseUntilRef = useRef<number | null>(null);

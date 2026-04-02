@@ -1,9 +1,18 @@
-export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+export function getSupabasePublicEnv() {
+  return {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+    publishableKey:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      '',
+  };
+}
 
-export const supabasePublishableKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  '';
+const env = getSupabasePublicEnv();
+
+export const supabaseUrl = env.url;
+
+export const supabasePublishableKey = env.publishableKey;
 
 export function getMissingSupabaseEnvVars(): string[] {
   const missing: string[] = [];

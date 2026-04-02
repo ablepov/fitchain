@@ -1,36 +1,34 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Progress as ProgressPrimitive } from "radix-ui"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
+type ProgressProps = React.HTMLAttributes<HTMLDivElement> & {
+  indicatorClassName?: string;
+  value?: number;
+};
 
-type ProgressProps = React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
-  indicatorClassName?: string
-}
+export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
+  ({ className, indicatorClassName, value = 0, ...props }, ref) => {
+    const boundedValue = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
 
-const Progress = React.forwardRef<
-  React.ElementRef<typeof ProgressPrimitive.Root>,
-  ProgressProps
->(({ className, value, indicatorClassName, ...props }, ref) => (
-  <ProgressPrimitive.Root
-    ref={ref}
-    data-slot="progress"
-    className={cn(
-      "relative flex h-3 w-full items-center overflow-x-hidden rounded-full bg-muted",
-      className
-    )}
-    value={value}
-    {...props}
-  >
-    <ProgressPrimitive.Indicator
-      data-slot="progress-indicator"
-      className={cn("size-full flex-1 bg-primary transition-all", indicatorClassName)}
-      style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-    />
-  </ProgressPrimitive.Root>
-))
+    return (
+      <div
+        ref={ref}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(boundedValue)}
+        className={cn("relative h-2 w-full overflow-hidden rounded-full bg-zinc-900", className)}
+        {...props}
+      >
+        <div
+          className={cn("h-full w-full bg-zinc-100 transition-transform", indicatorClassName)}
+          style={{ transform: `translateX(-${100 - boundedValue}%)` }}
+        />
+      </div>
+    );
+  }
+);
 
-Progress.displayName = "Progress"
-
-export { Progress }
+Progress.displayName = "Progress";

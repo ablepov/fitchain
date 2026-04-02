@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { QuickButtons } from "@/components/QuickButtons";
 import { MiniChart } from "@/components/MiniChart";
@@ -11,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Exercise = {
   id: string;
-  type: "pullups" | "pushups" | "squats";
+  type: string;
   goal: number;
 };
 
@@ -33,6 +34,7 @@ function formatLastSetTime(isoString: string | null): string {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [todayTotals, setTodayTotals] = useState<Record<string, number>>({});
@@ -43,10 +45,10 @@ export default function Home() {
   }, []);
 
   const handleTotalsChange = useCallback((totals: { type: string; total: number }[]) => {
-    const totalsMap = totals.reduce<Record<string, number>>(
-      (acc, item) => ({ ...acc, [item.type]: item.total }),
-      {}
-    );
+    const totalsMap: Record<string, number> = {};
+    for (const item of totals) {
+      totalsMap[item.type] = item.total;
+    }
 
     setTodayTotals(totalsMap);
   }, []);
@@ -68,7 +70,7 @@ export default function Home() {
     (async () => {
       const { data: me } = await supabase.auth.getUser();
       if (!me.user) {
-        window.location.href = "/auth";
+        router.replace("/auth");
         return;
       }
 
@@ -78,7 +80,7 @@ export default function Home() {
         .order("created_at", { ascending: true });
       setExercises(ex ?? []);
     })();
-  }, []);
+  }, [router]);
 
   return (
     <>

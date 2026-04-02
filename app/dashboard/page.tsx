@@ -56,7 +56,11 @@ export default function DashboardPage() {
     setMessage(null);
     const { data: me } = await supabase.auth.getUser();
     const userId = me.user?.id;
-    if (!userId) return;
+    if (!userId) {
+      setSavingTz(false);
+      setMessage("РЎРµСЃСЃРёСЏ РЅРµ РЅР°Р№РґРµРЅР°");
+      return;
+    }
     const { error } = await supabase.from("profiles").upsert({ user_id: userId, timezone });
     setSavingTz(false);
     setMessage(error ? `Ошибка: ${error.message}` : "Таймзона сохранена");

@@ -1,54 +1,83 @@
-export function getDayBoundsISO(timezone: string, date: Date = new Date()): { startISO: string; endISO: string } {
-  // MVP: вычисляем локальную дату в указанной TZ через toLocaleString,
-  // затем собираем полуночь и конец дня в этой TZ и конвертируем обратно в ISO (UTC)
-  const locale = 'en-US';
-  const parts = new Intl.DateTimeFormat(locale, {
+const DATE_PARTS_LOCALE = "en-CA";
+const OFFSET_LOCALE = "en-US";
+
+function getDateParts(timezone: string, date: Date) {
+  return new Intl.DateTimeFormat(DATE_PARTS_LOCALE, {
     timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   })
     .formatToParts(date)
-    .reduce<Record<string, string>>((acc, p) => {
-      if (p.type !== 'literal') acc[p.type] = p.value;
+    .reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== "literal") {
+        acc[part.type] = part.value;
+      }
+
       return acc;
     }, {});
-
-  // YYYY-MM-DD from TZ date
-  const yyyy = parts.year;
-  const mm = parts.month;
-  const dd = parts.day;
-  // Construct date strings in the provided TZ, then parse with Date by reformatting with timeZoneName hack (not robust, but ok for MVP)
-  // Simpler: use fixed times and then shift via target TZ offset. We'll estimate offset using the formatted hours difference.
-  // To avoid complexity, we create two Date objects from locale string and rely on JS parsing; as a fallback, use UTC midnight then adjust.
-
-  const startLocal = new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
-  const endLocal = new Date(`${yyyy}-${mm}-${dd}T23:59:59.999`);
-
-  // Now compute offset between provided TZ and system for given date
-  const sysStart = new Date(startLocal.toISOString());
-  const sysEnd = new Date(endLocal.toISOString());
-
-  // Format start in target TZ and system to approximate offset
-  const tzStartHour = Number(
-    new Intl.DateTimeFormat(locale, { timeZone: timezone, hour: '2-digit', hour12: false })
-      .formatToParts(startLocal)
-      .find((p) => p.type === 'hour')?.value ?? '0'
-  );
-  const sysStartHour = Number(
-    new Intl.DateTimeFormat(locale, { hour: '2-digit', hour12: false })
-      .formatToParts(startLocal)
-      .find((p) => p.type === 'hour')?.value ?? '0'
-  );
-  const hourDelta = tzStartHour - sysStartHour;
-
-  const startUTC = new Date(sysStart.getTime() - hourDelta * 60 * 60 * 1000);
-  const endUTC = new Date(sysEnd.getTime() - hourDelta * 60 * 60 * 1000);
-
-  return { startISO: startUTC.toISOString(), endISO: endUTC.toISOString() };
 }
 
+function getOffsetMinutes(timezone: string, date: Date) {
+  const timeZoneName =
+    new Intl.DateTimeFormat(OFFSET_LOCALE, {
+      timeZone: timezone,
+      timeZoneName: "longOffset",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+      .formatToParts(date)
+      .find((part) => part.type === "timeZoneName")?.value ?? "GMT+00:00";
+
+  const match = timeZoneName.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!match) {
+    return 0;
+  }
+
+  const sign = match[1] === "-" ? -1 : 1;
+  const hours = Number(match[2]);
+  const minutes = Number(match[3]);
+
+  return sign * (hours * 60 + minutes);
+}
+
+function zonedTimeToUtc(
+  timezone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  millisecond: number
+) {
+  let utcMs = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    const offsetMinutes = getOffsetMinutes(timezone, new Date(utcMs));
+    const nextUtcMs = Date.UTC(year, month - 1, day, hour, minute, second, millisecond) - offsetMinutes * 60_000;
+
+    if (nextUtcMs === utcMs) {
+      break;
+    }
+
+    utcMs = nextUtcMs;
+  }
+
+  return new Date(utcMs);
+}
+
+export function getDayBoundsISO(timezone: string, date: Date = new Date()): { startISO: string; endISO: string } {
+  const parts = getDateParts(timezone, date);
+  const year = Number(parts.year);
+  const month = Number(parts.month);
+  const day = Number(parts.day);
+
+  const start = zonedTimeToUtc(timezone, year, month, day, 0, 0, 0, 0);
+  const end = zonedTimeToUtc(timezone, year, month, day, 23, 59, 59, 999);
+
+  return {
+    startISO: start.toISOString(),
+    endISO: end.toISOString(),
+  };
+}

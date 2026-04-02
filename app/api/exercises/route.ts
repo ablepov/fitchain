@@ -1,85 +1,73 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
+import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
 
-export const runtime = 'edge';
-import { z } from 'zod';
-import { createClient } from '@supabase/supabase-js';
-import { supabasePublishableKey, supabaseUrl } from '@/lib/supabaseEnv';
+export const runtime = "edge";
 
 const postSchema = z.object({
-  type: z.string().min(2).max(100).regex(/^[a-zA-Zа-яА-Я0-9\s]+$/, 'Название может содержать только буквы, цифры и пробелы'),
+  type: z
+    .string()
+    .min(2)
+    .max(100)
+    .regex(/^[a-zA-Zа-яА-Я0-9\s]+$/, "Exercise name can contain only letters, numbers, and spaces"),
   goal: z.number().int().min(1).max(10000),
 });
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
-  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  const { supabase, userId } = await getAuthenticatedRouteContext(req);
+  if (!userId) {
+    return jsonError(401, "UNAUTHORIZED", "No session");
+  }
 
-  try {
-    const json = await req.json();
-    const parsed = postSchema.safeParse(json);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { data: null, error: { code: 'VALIDATION_ERROR', message: parsed.error.issues.map(i => i.message).join(', ') } },
-        { status: 400 }
-      );
-    }
+  const body = await readJsonSafely<unknown>(req);
+  if (!body) {
+    return jsonError(400, "VALIDATION_ERROR", "Invalid JSON body");
+  }
 
-    const { data: me } = await supabase.auth.getUser();
-    const userId = me.user?.id;
-    if (!userId) {
-      return NextResponse.json(
-        { data: null, error: { code: 'UNAUTHORIZED', message: 'No session' } },
-        { status: 401 }
-      );
-    }
-
-    // Проверяем уникальность названия упражнения для пользователя
-    const { data: existingExercise, error: checkError } = await supabase
-      .from('exercises')
-      .select('id, type')
-      .eq('user_id', userId)
-      .ilike('type', parsed.data.type.trim())
-      .maybeSingle();
-
-    if (checkError) {
-      return NextResponse.json(
-        { data: null, error: { code: 'INTERNAL_ERROR', message: checkError.message } },
-        { status: 500 }
-      );
-    }
-
-    if (existingExercise) {
-      return NextResponse.json(
-        { data: null, error: { code: 'CONFLICT', message: 'Упражнение с таким названием уже существует' } },
-        { status: 409 }
-      );
-    }
-
-    // Создаем новое упражнение
-    const { data, error } = await supabase
-      .from('exercises')
-      .insert({
-        user_id: userId,
-        type: parsed.data.type.trim(),
-        goal: parsed.data.goal,
-      })
-      .select('id, type, goal, created_at')
-      .single();
-
-    if (error) {
-      return NextResponse.json(
-        { data: null, error: { code: 'INTERNAL_ERROR', message: error.message } },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ data, error: null }, { status: 201 });
-  } catch (e) {
-    return NextResponse.json(
-      { data: null, error: { code: 'INTERNAL_ERROR', message: 'Unexpected error' } },
-      { status: 500 }
+  const parsed = postSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonError(
+      400,
+      "VALIDATION_ERROR",
+      parsed.error.issues.map((issue) => issue.message).join(", ")
     );
   }
+
+  const normalizedType = parsed.data.type.trim();
+
+  const { data: existingExercise, error: checkError } = await supabase
+    .from("exercises")
+    .select("id")
+    .eq("user_id", userId)
+    .ilike("type", normalizedType)
+    .maybeSingle();
+
+  if (checkError) {
+    return jsonError(500, "INTERNAL_ERROR", checkError.message);
+  }
+
+  if (existingExercise) {
+    return jsonError(409, "CONFLICT", "Exercise already exists");
+  }
+
+  const { data, error } = await supabase
+    .from("exercises")
+    .insert({
+      user_id: userId,
+      type: normalizedType,
+      goal: parsed.data.goal,
+    })
+    .select("id, type, goal, created_at")
+    .single();
+
+  if (error?.code === "23505") {
+    return jsonError(409, "CONFLICT", "Exercise already exists");
+  }
+
+  if (error) {
+    return jsonError(500, "INTERNAL_ERROR", error.message);
+  }
+
+  return jsonSuccess(data, { status: 201 });
 }

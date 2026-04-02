@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "test:e2e": "playwright test"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "verify": "npm run typecheck && npm run build && npm run test:e2e"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.75.0",

@@ -1,120 +1,175 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
+import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
 
-export const runtime = 'edge';
-import { z } from 'zod';
-import { createClient } from '@supabase/supabase-js';
-import { supabasePublishableKey, supabaseUrl } from '@/lib/supabaseEnv';
+export const runtime = "edge";
+
+const exerciseNameSchema = z
+  .string()
+  .min(2)
+  .max(100)
+  .regex(/^[a-zA-Zа-яА-Я0-9\s]+$/, "Exercise name can contain only letters, numbers, and spaces");
 
 const postSchema = z.object({
   exerciseId: z.string().uuid().optional(),
-  exercise: z.enum(['pullups', 'pushups', 'squats']).optional(),
-  reps: z.number().int().min(-1000).max(1000),
+  exercise: exerciseNameSchema.optional(),
+  reps: z.number().int().min(1).max(1000),
   note: z.string().max(500).optional(),
-  source: z.enum(['manual', 'quickbutton']).default('quickbutton'),
+  source: z.enum(["manual", "quickbutton"]).default("quickbutton"),
 });
 
-export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
-  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
+async function resolveOwnedExerciseId(
+  userId: string,
+  supabase: Awaited<ReturnType<typeof getAuthenticatedRouteContext>>["supabase"],
+  params: { exerciseId?: string; exercise?: string }
+) {
+  if (params.exerciseId) {
+    const { data: exercise, error } = await supabase
+      .from("exercises")
+      .select("id")
+      .eq("id", params.exerciseId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  const url = new URL(req.url);
-  const exerciseType = url.searchParams.get('exercise') as 'pullups' | 'pushups' | 'squats' | null;
-  const exerciseId = url.searchParams.get('exerciseId');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 500);
-  const from = url.searchParams.get('from');
-  const to = url.searchParams.get('to');
-
-  try {
-    // Определяем exercise_id, если задан тип
-    let resolvedExerciseId = exerciseId ?? undefined;
-    if (!resolvedExerciseId && exerciseType) {
-      const { data: me } = await supabase.auth.getUser();
-      const userId = me.user?.id;
-      if (!userId) return NextResponse.json({ data: null, error: { code: 'UNAUTHORIZED', message: 'No session' } }, { status: 401 });
-      const { data: ex, error: exErr } = await supabase
-        .from('exercises')
-        .select('id')
-        .eq('type', exerciseType)
-        .limit(1)
-        .maybeSingle();
-      if (exErr || !ex) return NextResponse.json({ data: null, error: { code: 'NOT_FOUND', message: 'Exercise not found' } }, { status: 404 });
-      resolvedExerciseId = ex.id;
+    if (error) {
+      return { error };
     }
 
-    let query = supabase.from('sets').select('id,exercise_id,reps,created_at,note,source').order('created_at', { ascending: false }).limit(limit);
+    if (!exercise) {
+      return { error: new Error("Exercise not found") };
+    }
 
-    if (resolvedExerciseId) query = query.eq('exercise_id', resolvedExerciseId);
-    if (from) query = query.gte('created_at', from);
-    if (to) query = query.lte('created_at', to);
-
-    const { data, error } = await query;
-    if (error) return NextResponse.json({ data: null, error: { code: 'INTERNAL_ERROR', message: error.message } }, { status: 500 });
-
-    return NextResponse.json({ data, error: null }, { status: 200 });
-  } catch (e) {
-    return NextResponse.json({ data: null, error: { code: 'INTERNAL_ERROR', message: 'Unexpected error' } }, { status: 500 });
+    return { exerciseId: exercise.id };
   }
+
+  if (!params.exercise) {
+    return { exerciseId: undefined };
+  }
+
+  const { data: exercise, error } = await supabase
+    .from("exercises")
+    .select("id")
+    .eq("user_id", userId)
+    .ilike("type", params.exercise)
+    .maybeSingle();
+
+  if (error) {
+    return { error };
+  }
+
+  if (!exercise) {
+    return { error: new Error("Exercise not found") };
+  }
+
+  return { exerciseId: exercise.id };
+}
+
+export async function GET(req: NextRequest) {
+  const { supabase, userId } = await getAuthenticatedRouteContext(req);
+  if (!userId) {
+    return jsonError(401, "UNAUTHORIZED", "No session");
+  }
+
+  const url = new URL(req.url);
+  const exercise = url.searchParams.get("exercise")?.trim() || undefined;
+  const exerciseIdParam = url.searchParams.get("exerciseId") || undefined;
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 500);
+  const from = url.searchParams.get("from");
+  const to = url.searchParams.get("to");
+
+  const resolvedExercise = await resolveOwnedExerciseId(userId, supabase, {
+    exerciseId: exerciseIdParam,
+    exercise,
+  });
+
+  if (resolvedExercise.error) {
+    const message = resolvedExercise.error.message === "Exercise not found"
+      ? "Exercise not found"
+      : resolvedExercise.error.message;
+    const status = message === "Exercise not found" ? 404 : 500;
+    const code = status === 404 ? "NOT_FOUND" : "INTERNAL_ERROR";
+    return jsonError(status, code, message);
+  }
+
+  let query = supabase
+    .from("sets")
+    .select("id, exercise_id, reps, created_at, note, source")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (resolvedExercise.exerciseId) {
+    query = query.eq("exercise_id", resolvedExercise.exerciseId);
+  }
+
+  if (from) {
+    query = query.gte("created_at", from);
+  }
+
+  if (to) {
+    query = query.lte("created_at", to);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    return jsonError(500, "INTERNAL_ERROR", error.message);
+  }
+
+  return jsonSuccess(data ?? []);
 }
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
-  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-    global: { headers: { Authorization: authHeader } },
+  const { supabase, userId } = await getAuthenticatedRouteContext(req);
+  if (!userId) {
+    return jsonError(401, "UNAUTHORIZED", "No session");
+  }
+
+  const body = await readJsonSafely<unknown>(req);
+  if (!body) {
+    return jsonError(400, "VALIDATION_ERROR", "Invalid JSON body");
+  }
+
+  const parsed = postSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonError(400, "VALIDATION_ERROR", "Invalid body");
+  }
+
+  if (!parsed.data.exerciseId && !parsed.data.exercise) {
+    return jsonError(400, "VALIDATION_ERROR", "exerciseId or exercise is required");
+  }
+
+  const resolvedExercise = await resolveOwnedExerciseId(userId, supabase, {
+    exerciseId: parsed.data.exerciseId,
+    exercise: parsed.data.exercise?.trim(),
   });
 
-  try {
-    const json = await req.json();
-    const parsed = postSchema.safeParse(json);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { data: null, error: { code: 'VALIDATION_ERROR', message: 'Invalid body' } },
-        { status: 400 }
-      );
-    }
-
-    const { data: me } = await supabase.auth.getUser();
-    const userId = me.user?.id;
-    if (!userId) return NextResponse.json({ data: null, error: { code: 'UNAUTHORIZED', message: 'No session' } }, { status: 401 });
-
-    // Разрешим указать либо exerciseId, либо exercise type
-    let resolvedExerciseId = parsed.data.exerciseId;
-    if (!resolvedExerciseId && parsed.data.exercise) {
-      const { data: ex, error: exErr } = await supabase
-        .from('exercises')
-        .select('id')
-        .eq('type', parsed.data.exercise)
-        .limit(1)
-        .maybeSingle();
-      if (exErr || !ex) return NextResponse.json({ data: null, error: { code: 'NOT_FOUND', message: 'Exercise not found' } }, { status: 404 });
-      resolvedExerciseId = ex.id;
-    }
-    if (!resolvedExerciseId) {
-      return NextResponse.json({ data: null, error: { code: 'VALIDATION_ERROR', message: 'exerciseId or exercise is required' } }, { status: 400 });
-    }
-
-    const { data, error } = await supabase
-      .from('sets')
-      .insert({
-        exercise_id: resolvedExerciseId,
-        reps: parsed.data.reps,
-        note: parsed.data.note ?? null,
-        source: parsed.data.source,
-      })
-      .select('id,exercise_id,reps,created_at,note,source')
-      .single();
-
-    if (error) {
-      const status = error.code === '42501' ? 403 : 500;
-      return NextResponse.json({ data: null, error: { code: 'INTERNAL_ERROR', message: error.message } }, { status });
-    }
-
-    return NextResponse.json({ data, error: null }, { status: 201 });
-  } catch (e) {
-    return NextResponse.json(
-      { data: null, error: { code: 'INTERNAL_ERROR', message: 'Unexpected error' } },
-      { status: 500 }
-    );
+  if (resolvedExercise.error || !resolvedExercise.exerciseId) {
+    const message = resolvedExercise.error?.message ?? "Exercise not found";
+    const status = message === "Exercise not found" ? 404 : 500;
+    const code = status === 404 ? "NOT_FOUND" : "INTERNAL_ERROR";
+    return jsonError(status, code, message);
   }
+
+  const note = parsed.data.note?.trim();
+
+  const { data, error } = await supabase
+    .from("sets")
+    .insert({
+      exercise_id: resolvedExercise.exerciseId,
+      reps: parsed.data.reps,
+      note: note ? note : null,
+      source: parsed.data.source,
+    })
+    .select("id, exercise_id, reps, created_at, note, source")
+    .single();
+
+  if (error?.code === "42501") {
+    return jsonError(403, "FORBIDDEN", error.message);
+  }
+
+  if (error) {
+    return jsonError(500, "INTERNAL_ERROR", error.message);
+  }
+
+  return jsonSuccess(data, { status: 201 });
 }

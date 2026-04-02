@@ -4,7 +4,7 @@ export type Profile = {
   createdAt: string;
 };
 
-export type ExerciseType = 'pullups' | 'pushups' | 'squats';
+export type ExerciseType = string;
 
 export type Exercise = {
   id: string;
@@ -29,6 +29,7 @@ export type ApiError = {
     | 'UNAUTHORIZED'
     | 'FORBIDDEN'
     | 'NOT_FOUND'
+    | 'CONFLICT'
     | 'VALIDATION_ERROR'
     | 'RATE_LIMITED'
     | 'INTERNAL_ERROR';

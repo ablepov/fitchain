@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { logEnvironmentStatus } from "@/lib/env-check";
-import { cn } from "@/lib/utils";
-
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,12 +13,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Проверка переменных окружения при запуске сервера
 logEnvironmentStatus();
 
 export const metadata: Metadata = {
-  title: "Fitchain - Тренировки",
-  description: "Приложение для домашних микро-тренировок",
+  title: "Fitchain - РўСЂРµРЅРёСЂРѕРІРєРё",
+  description: "РџСЂРёР»РѕР¶РµРЅРёРµ РґР»СЏ РґРѕРјР°С€РЅРёС… РјРёРєСЂРѕ-С‚СЂРµРЅРёСЂРѕРІРѕРє",
 };
 
 export default function RootLayout({
@@ -30,12 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("dark font-sans", inter.variable)}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+    <html lang="ru" className={`${geistSans.variable} ${geistMono.variable} dark`}>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

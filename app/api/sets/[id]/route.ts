@@ -1,63 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from "next/server";
+import { jsonError, noStoreHeaders } from "@/lib/api";
+import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
 
-export const runtime = 'edge';
-import { createClient } from '@supabase/supabase-js';
-import { supabasePublishableKey, supabaseUrl } from '@/lib/supabaseEnv';
+export const runtime = "edge";
+
+async function resolveParams(
+  context: { params: Promise<{ id: string }> } | { params: { id: string } }
+) {
+  return "then" in context.params ? await context.params : context.params;
+}
 
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> } | { params: { id: string } }
 ) {
-  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
-  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  try {
-    const { data: me } = await supabase.auth.getUser();
-    const userId = me.user?.id;
-    if (!userId) {
-      return NextResponse.json(
-        { data: null, error: { code: 'UNAUTHORIZED', message: 'No session' } },
-        { status: 401 }
-      );
-    }
-
-    // Get params id
-    const params = 'then' in context.params ? await context.params : context.params;
-
-    // Проверяем, что запись принадлежит пользователю
-    const { data: set, error: getError } = await supabase
-      .from('sets')
-      .select('id')
-      .eq('id', params.id)
-      .single();
-
-    if (getError || !set) {
-      return NextResponse.json(
-        { data: null, error: { code: 'NOT_FOUND', message: 'Set not found' } },
-        { status: 404 }
-      );
-    }
-
-    // Удаляем запись
-    const { error: deleteError } = await supabase
-      .from('sets')
-      .delete()
-      .eq('id', params.id);
-
-    if (deleteError) {
-      return NextResponse.json(
-        { data: null, error: { code: 'INTERNAL_ERROR', message: deleteError.message } },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ data: null, error: null }, { status: 200 });
-  } catch (e) {
-    return NextResponse.json(
-      { data: null, error: { code: 'INTERNAL_ERROR', message: 'Unexpected error' } },
-      { status: 500 }
-    );
+  const { supabase, userId } = await getAuthenticatedRouteContext(req);
+  if (!userId) {
+    return jsonError(401, "UNAUTHORIZED", "No session");
   }
+
+  const params = await resolveParams(context);
+
+  const { data: existingSet, error: getError } = await supabase
+    .from("sets")
+    .select("id")
+    .eq("id", params.id)
+    .maybeSingle();
+
+  if (getError) {
+    return jsonError(500, "INTERNAL_ERROR", getError.message);
+  }
+
+  if (!existingSet) {
+    return jsonError(404, "NOT_FOUND", "Set not found");
+  }
+
+  const { data: deletedSet, error: deleteError } = await supabase
+    .from("sets")
+    .update({
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("id", params.id)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError) {
+    return jsonError(500, "INTERNAL_ERROR", deleteError.message);
+  }
+
+  if (!deletedSet) {
+    return jsonError(404, "NOT_FOUND", "Set not found");
+  }
+
+  return new Response(null, {
+    status: 204,
+    headers: noStoreHeaders(),
+  });
 }

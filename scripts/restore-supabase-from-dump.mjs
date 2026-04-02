@@ -211,7 +211,7 @@ create table if not exists public.sets (
   note text,
   source text not null default 'quickbutton',
   deleted_at timestamptz,
-  constraint sets_reps_check check (reps >= -1000 and reps <= 1000),
+  constraint sets_reps_check check (reps > 0 and reps <= 1000),
   constraint sets_source_check check (source = any (array['manual'::text, 'quickbutton'::text]))
 );
 
@@ -246,19 +246,30 @@ begin
 end $$;
 
 create index if not exists idx_exercises_user on public.exercises using btree (user_id);
+create unique index if not exists idx_exercises_user_type_unique
+  on public.exercises using btree (user_id, lower(trim(type)));
 create index if not exists idx_sets_created_at on public.sets using btree (created_at);
 create index if not exists idx_sets_exercise on public.sets using btree (exercise_id);
 create index if not exists idx_sets_not_deleted on public.sets using btree (deleted_at);
 
-grant usage on schema public to anon, authenticated, service_role;
-grant all on function public.current_user_id() to anon, authenticated, service_role;
-grant all on table public.exercises to anon, authenticated, service_role;
-grant all on table public.profiles to anon, authenticated, service_role;
-grant all on table public.sets to anon, authenticated, service_role;
+grant usage on schema public to authenticated, service_role;
+grant execute on function public.current_user_id() to authenticated, service_role;
+revoke all on table public.exercises from anon, authenticated;
+revoke all on table public.profiles from anon, authenticated;
+revoke all on table public.sets from anon, authenticated;
+grant select, insert, update, delete on table public.exercises to authenticated;
+grant select, insert, update on table public.profiles to authenticated;
+grant select, insert, update on table public.sets to authenticated;
+grant all on table public.exercises to service_role;
+grant all on table public.profiles to service_role;
+grant all on table public.sets to service_role;
 
 alter table public.profiles enable row level security;
 alter table public.exercises enable row level security;
 alter table public.sets enable row level security;
+alter table public.profiles force row level security;
+alter table public.exercises force row level security;
+alter table public.sets force row level security;
 
 drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles

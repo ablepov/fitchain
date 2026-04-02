@@ -1,16 +1,36 @@
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = "debug" | "info" | "warn" | "error";
+
+interface LogError {
+  message: string;
+  name: string;
+  stack?: string;
+}
 
 interface LogEntry {
   level: LogLevel;
   message: string;
   timestamp: string;
   component?: string;
-  error?: Error;
+  error?: LogError;
 }
 
+const MAX_LOGS = 200;
+
 class Logger {
-  private isDevelopment = process.env.NODE_ENV === 'development';
+  private isDevelopment = process.env.NODE_ENV === "development";
   private logs: LogEntry[] = [];
+
+  private serializeError(error?: Error): LogError | undefined {
+    if (!error) {
+      return undefined;
+    }
+
+    return {
+      name: error.name,
+      message: error.message,
+      stack: this.isDevelopment ? error.stack : undefined,
+    };
+  }
 
   private log(level: LogLevel, message: string, component?: string, error?: Error) {
     const entry: LogEntry = {
@@ -18,58 +38,59 @@ class Logger {
       message,
       timestamp: new Date().toISOString(),
       component,
-      error
+      error: this.serializeError(error),
     };
 
     this.logs.push(entry);
+    if (this.logs.length > MAX_LOGS) {
+      this.logs = this.logs.slice(-MAX_LOGS);
+    }
 
-    // В продакшене отправляем только ошибки и предупреждения
-    if (!this.isDevelopment && (level === 'debug' || level === 'info')) {
+    if (!this.isDevelopment && (level === "debug" || level === "info")) {
       return;
     }
 
-    const prefix = component ? `[${component}]` : '';
+    const prefix = component ? `[${component}]` : "";
     const logMessage = `${prefix} ${message}`;
 
     switch (level) {
-      case 'debug':
-        console.debug(logMessage, error);
+      case "debug":
+        console.debug(logMessage, entry.error);
         break;
-      case 'info':
-        console.info(logMessage, error);
+      case "info":
+        console.info(logMessage, entry.error);
         break;
-      case 'warn':
-        console.warn(logMessage, error);
+      case "warn":
+        console.warn(logMessage, entry.error);
         break;
-      case 'error':
-        console.error(logMessage, error);
+      case "error":
+        console.error(logMessage, entry.error);
         break;
     }
   }
 
   debug(message: string, component?: string) {
-    this.log('debug', message, component);
+    this.log("debug", message, component);
   }
 
   info(message: string, component?: string) {
-    this.log('info', message, component);
+    this.log("info", message, component);
   }
 
   warn(message: string, component?: string, error?: Error) {
-    this.log('warn', message, component, error);
+    this.log("warn", message, component, error);
   }
 
   error(message: string, component?: string, error?: Error) {
-    this.log('error', message, component, error);
+    this.log("error", message, component, error);
   }
 
-  // Получить последние логи (для отладки)
   getLogs(level?: LogLevel, limit = 50): LogEntry[] {
-    let filtered = level ? this.logs.filter(log => log.level === level) : this.logs;
-    return filtered.slice(-limit);
+    const safeLimit = Math.max(1, Math.min(limit, MAX_LOGS));
+    const filtered = level ? this.logs.filter((log) => log.level === level) : this.logs;
+    return filtered.slice(-safeLimit);
   }
 
-  // Очистить логи
   clearLogs() {
     this.logs = [];
   }
