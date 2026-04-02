@@ -285,6 +285,7 @@ export function QuickButtons({
               : "border-zinc-900 bg-zinc-950 text-zinc-400"
           )}
           onClick={() => handleButtonClick(-1)}
+          data-testid="quick-button-minus-one"
           disabled={
             sending ||
             (!bufferState.isActive && todayTotal <= 0) ||
@@ -312,6 +313,7 @@ export function QuickButtons({
                 : "border-zinc-800 bg-black text-zinc-50 hover:bg-zinc-900"
             )}
             onClick={() => handleButtonClick(value)}
+            data-testid={`quick-button-plus-${value}`}
             aria-label={`Добавить ${value}`}
             disabled={sending}
           >
@@ -323,6 +325,7 @@ export function QuickButtons({
           variant="secondary"
           className="h-12 rounded-2xl px-0 text-sm"
           onClick={() => handleButtonClick(1)}
+          data-testid="quick-button-plus-one"
           disabled={sending}
           aria-label="Добавить 1"
         >
@@ -331,19 +334,22 @@ export function QuickButtons({
       </div>
 
       {bufferState.isActive && (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-3">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-3" data-testid="quick-buffer-panel">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-testid="quick-buffer-timer">
               <Badge className="border-zinc-700 bg-zinc-100 text-black">Буфер</Badge>
-              <span className="text-base font-semibold text-zinc-50">+{bufferState.value}</span>
+              <span className="text-base font-semibold text-zinc-50" data-testid="quick-buffer-value">
+                +{bufferState.value}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-testid="quick-buffer-countdown">
               <span className="text-xs text-zinc-500">Фиксация через {currentTimeLeft}с</span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-8 rounded-full border border-zinc-800"
                 onClick={() => dispatch({ type: "CANCEL" })}
+                data-testid="quick-buffer-cancel"
                 aria-label="Отменить буфер"
                 title="Отменить добавление подхода"
               >

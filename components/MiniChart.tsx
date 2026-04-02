@@ -18,7 +18,7 @@ export function MiniChart({
   exerciseId: string;
   limit?: number;
   refreshTrigger?: number;
-  onLastSetTime?: (time: string | null) => void;
+  onLastSetTime?: (exerciseId: string, time: string | null) => void;
 }) {
   const [reps, setReps] = useState<number[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export function MiniChart({
         const lastSet = setData[0];
 
         setReps(values);
-        onLastSetTime?.(lastSet ? lastSet.created_at : null);
+        onLastSetTime?.(exerciseId, lastSet ? lastSet.created_at : null);
       } catch (e) {
         if (!isMounted) return;
         logger.error(
@@ -57,7 +57,7 @@ export function MiniChart({
         );
         setError("Не удалось загрузить данные графика");
         setReps([]);
-        onLastSetTime?.(null);
+        onLastSetTime?.(exerciseId, null);
       }
     })();
 

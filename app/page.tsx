@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { QuickButtons } from "@/components/QuickButtons";
 import { MiniChart } from "@/components/MiniChart";
@@ -37,6 +37,32 @@ export default function Home() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [todayTotals, setTodayTotals] = useState<Record<string, number>>({});
   const [lastSetTimes, setLastSetTimes] = useState<Record<string, string | null>>({});
+
+  const handleSetAdded = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
+  const handleTotalsChange = useCallback((totals: { type: string; total: number }[]) => {
+    const totalsMap = totals.reduce<Record<string, number>>(
+      (acc, item) => ({ ...acc, [item.type]: item.total }),
+      {}
+    );
+
+    setTodayTotals(totalsMap);
+  }, []);
+
+  const handleLastSetTime = useCallback((exerciseId: string, time: string | null) => {
+    setLastSetTimes((prev) => {
+      if (prev[exerciseId] === time) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [exerciseId]: time,
+      };
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -87,13 +113,7 @@ export default function Home() {
 
           <SummaryPanel
             refreshTrigger={refreshTrigger}
-            onTotalsChange={(totals) => {
-              const totalsMap = totals.reduce<Record<string, number>>(
-                (acc, item) => ({ ...acc, [item.type]: item.total }),
-                {}
-              );
-              setTodayTotals(totalsMap);
-            }}
+            onTotalsChange={handleTotalsChange}
           />
 
           <section className="space-y-3">
@@ -137,17 +157,12 @@ export default function Home() {
                       <MiniChart
                         exerciseId={exercise.id}
                         refreshTrigger={refreshTrigger}
-                        onLastSetTime={(time) =>
-                          setLastSetTimes((prev) => ({
-                            ...prev,
-                            [exercise.id]: time,
-                          }))
-                        }
+                        onLastSetTime={handleLastSetTime}
                       />
 
                       <QuickButtons
                         exerciseId={exercise.id}
-                        onAdded={() => setRefreshTrigger((prev) => prev + 1)}
+                        onAdded={handleSetAdded}
                         todayTotal={progress}
                       />
                     </CardContent>
