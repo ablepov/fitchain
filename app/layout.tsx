@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 logEnvironmentStatus();
 
 export const metadata: Metadata = {
-  title: "Fitchain - РўСЂРµРЅРёСЂРѕРІРєРё",
-  description: "РџСЂРёР»РѕР¶РµРЅРёРµ РґР»СЏ РґРѕРјР°С€РЅРёС… РјРёРєСЂРѕ-С‚СЂРµРЅРёСЂРѕРІРѕРє",
+  title: "Fitchain - Тренировки",
+  description: "Приложение для домашних микро-тренировок",
 };
 
 export default function RootLayout({

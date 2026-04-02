@@ -58,7 +58,7 @@ export default function DashboardPage() {
     const userId = me.user?.id;
     if (!userId) {
       setSavingTz(false);
-      setMessage("РЎРµСЃСЃРёСЏ РЅРµ РЅР°Р№РґРµРЅР°");
+      setMessage("Сессия не найдена");
       return;
     }
     const { error } = await supabase.from("profiles").upsert({ user_id: userId, timezone });
