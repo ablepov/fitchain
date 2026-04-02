@@ -15,6 +15,7 @@ interface HeaderProps {
 const navItems = [
   { href: "/", label: "Главная" },
   { href: "/dashboard", label: "Дашборд" },
+  { href: "/animation-lab", label: "Лаб" },
   { href: "/profile", label: "Профиль" },
 ];
 
@@ -51,7 +52,7 @@ export function Header({ title, showBackButton = false }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-950/90 bg-black/90 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-2xl flex-col gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           {showBackButton && (
             <Button
@@ -99,7 +100,11 @@ export function Header({ title, showBackButton = false }: HeaderProps) {
           </div>
         </div>
 
-        <nav className="grid grid-cols-3 gap-2" aria-label="Основная навигация">
+        <nav
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
+          aria-label="Основная навигация"
+        >
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (

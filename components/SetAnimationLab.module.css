@@ -1,0 +1,447 @@
+.heroCard {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at top left, rgba(255, 184, 77, 0.14), transparent 28%),
+    radial-gradient(circle at right 20%, rgba(255, 255, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(14, 14, 14, 0.98), rgba(6, 6, 6, 0.98));
+}
+
+.variantCard {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(17, 17, 17, 0.98), rgba(5, 5, 5, 0.98));
+}
+
+.scene {
+  position: relative;
+  min-height: 27rem;
+  overflow: hidden;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at 18% 12%, var(--lab-glow), transparent 28%),
+    radial-gradient(circle at 82% 16%, var(--lab-accent-soft), transparent 22%),
+    linear-gradient(180deg, var(--lab-bg-start), var(--lab-bg-end));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 28px 80px -48px var(--lab-glow);
+  isolation: isolate;
+}
+
+.scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%),
+    radial-gradient(circle at center, transparent 46%, rgba(0, 0, 0, 0.24));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 36px, 36px 100%;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 78%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.progressTrack {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  z-index: 3;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--lab-accent), var(--lab-accent-strong));
+  box-shadow: 0 0 24px var(--lab-glow);
+  transition: width 80ms linear, opacity 180ms ease;
+}
+
+.progressCommitting {
+  animation: commitPulse 560ms ease-in-out infinite alternate;
+}
+
+.hud {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0;
+}
+
+.statusCluster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(8, 8, 8, 0.58);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.statusDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--lab-accent);
+  box-shadow: 0 0 14px var(--lab-glow);
+}
+
+.statusText {
+  max-width: 14rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(244, 244, 245, 0.72);
+}
+
+.counter {
+  position: relative;
+  min-width: 6.75rem;
+  border-radius: 1.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(18, 18, 18, 0.92), rgba(8, 8, 8, 0.92));
+  padding: 0.8rem 0.95rem 0.9rem;
+  text-align: right;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 40px -28px rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+.counter::before {
+  content: "";
+  position: absolute;
+  inset: auto 0.7rem 0.55rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lab-accent-soft), transparent);
+}
+
+.counterLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.counterValue {
+  margin-top: 0.3rem;
+  font-size: clamp(2rem, 5vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  color: rgb(250, 250, 250);
+}
+
+.holdZone {
+  position: absolute;
+  inset: 3.4rem 1.1rem auto;
+  height: 6rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+    radial-gradient(circle at center, var(--lab-accent-soft), transparent 70%);
+  box-shadow:
+    inset 0 -20px 44px -34px rgba(0, 0, 0, 0.9),
+    inset 0 14px 24px -22px rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.holdZone::after {
+  content: "";
+  position: absolute;
+  inset: auto 12% 0.65rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+}
+
+.centerpiece {
+  position: absolute;
+  left: 50%;
+  top: 53%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.centerAura {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 10rem;
+  height: 10rem;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, var(--lab-glow), transparent 68%);
+  filter: blur(10px);
+  opacity: 0.8;
+}
+
+.centerEmojiWrap {
+  position: relative;
+}
+
+.centerEmoji {
+  position: relative;
+  font-size: clamp(4.8rem, 8vw, 6rem);
+  line-height: 1;
+  filter:
+    drop-shadow(0 16px 34px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 0 24px var(--lab-glow));
+  animation: centerPulse 5.4s cubic-bezier(0.37, 0, 0.22, 1) infinite;
+}
+
+.centerCaption {
+  max-width: 13rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(244, 244, 245, 0.62);
+}
+
+.buttonDock {
+  position: absolute;
+  inset: auto 1rem 1rem;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.controlButton {
+  height: 3.25rem;
+  border-radius: 1.25rem;
+}
+
+.minusButton {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(8, 8, 8, 0.72);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.plusButton {
+  border-color: transparent;
+  color: rgba(10, 10, 10, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 16px 34px -22px var(--lab-glow);
+}
+
+.metaRow {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metaPill {
+  border-radius: 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(18, 18, 18, 0.82), rgba(10, 10, 10, 0.92));
+  padding: 0.85rem 0.9rem;
+}
+
+.metaLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.metaValue {
+  margin-top: 0.35rem;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: rgba(250, 250, 250, 0.82);
+}
+
+.tokenShell {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  transition: transform 440ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity, filter;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.tokenBody {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  font-size: 2rem;
+  line-height: 1;
+  transform-origin: center;
+  filter:
+    drop-shadow(0 14px 18px rgba(0, 0, 0, 0.32))
+    drop-shadow(0 0 18px var(--lab-glow));
+}
+
+.tokenHold {
+  animation-duration: 4.2s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.floatDrift {
+  animation-name: floatDrift;
+}
+
+.floatHover {
+  animation-name: floatHover;
+}
+
+.floatOrbit {
+  animation-name: floatOrbit;
+}
+
+.floatBob {
+  animation-name: floatBob;
+}
+
+.floatFlutter {
+  animation-name: floatFlutter;
+}
+
+@keyframes centerPulse {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(-2deg);
+  }
+  32% {
+    transform: translate3d(0, -10px, 0) scale(1.03) rotate(2deg);
+  }
+  64% {
+    transform: translate3d(0, 6px, 0) scale(0.98) rotate(-1deg);
+  }
+}
+
+@keyframes floatDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -7px, 0) rotate(3deg) scale(1.03);
+  }
+}
+
+@keyframes floatHover {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  35% {
+    transform: translate3d(4px, -8px, 0) scale(1.02) rotate(4deg);
+  }
+  70% {
+    transform: translate3d(-4px, -2px, 0) scale(0.98) rotate(-4deg);
+  }
+}
+
+@keyframes floatOrbit {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translate3d(5px, -5px, 0) rotate(5deg) scale(1.04);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0) rotate(0deg) scale(1.02);
+  }
+  75% {
+    transform: translate3d(-5px, -4px, 0) rotate(-5deg) scale(0.98);
+  }
+}
+
+@keyframes floatBob {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  30% {
+    transform: translate3d(0, -10px, 0) scale(1.05);
+  }
+  65% {
+    transform: translate3d(0, 2px, 0) scale(0.96);
+  }
+}
+
+@keyframes floatFlutter {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  18% {
+    transform: translate3d(3px, -5px, 0) rotate(5deg) scale(1.03);
+  }
+  36% {
+    transform: translate3d(-3px, -10px, 0) rotate(-4deg) scale(0.98);
+  }
+  66% {
+    transform: translate3d(5px, -3px, 0) rotate(6deg) scale(1.02);
+  }
+}
+
+@keyframes commitPulse {
+  from {
+    opacity: 0.78;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .scene {
+    min-height: 25.5rem;
+  }
+
+  .buttonDock {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metaRow {
+    grid-template-columns: 1fr;
+  }
+}
