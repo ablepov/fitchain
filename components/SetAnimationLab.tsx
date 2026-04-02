@@ -39,7 +39,9 @@ type TokenModel = {
   from: Point;
   to: Point;
   motionKey: number;
-  rank: number;
+  motionIndex: number;
+  motionTotal: number;
+  zOrder: number;
 };
 
 type ArcTuning = {
@@ -1203,13 +1205,11 @@ function AnimatedToken({
   token,
   variant,
   metrics,
-  total,
   onMotionComplete,
 }: {
   token: TokenModel;
   variant: VariantConfig;
   metrics: SceneMetrics;
-  total: number;
   onMotionComplete: (id: string, phase: MotionPhase) => void;
 }) {
   const shellRef = useRef<HTMLSpanElement | null>(null);
@@ -1224,8 +1224,8 @@ function AnimatedToken({
     const params: MotionParams = {
       start: token.from,
       end: token.to,
-      index: token.rank,
-      total,
+      index: token.motionIndex,
+      total: token.motionTotal || 1,
       metrics,
     };
 
@@ -1262,7 +1262,18 @@ function AnimatedToken({
     return () => {
       animation.cancel();
     };
-  }, [metrics, onMotionComplete, token.from, token.id, token.motionKey, token.phase, token.rank, token.to, total, variant]);
+  }, [
+    metrics,
+    onMotionComplete,
+    token.from,
+    token.id,
+    token.motionIndex,
+    token.motionKey,
+    token.motionTotal,
+    token.phase,
+    token.to,
+    variant,
+  ]);
 
   return (
     <span
@@ -1270,7 +1281,7 @@ function AnimatedToken({
       className={styles.tokenShell}
       style={{
         transform: transformOf({ x: token.x, y: token.y }),
-        zIndex: token.phase === "drop" ? 12 : 5 + token.rank,
+        zIndex: token.phase === "drop" ? 12 : 5 + token.zOrder,
       }}
     >
       <span
@@ -1310,16 +1321,8 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
   const timerDeadlineRef = useRef<number | null>(null);
   const anchorsRef = useRef<SceneAnchors | null>(null);
   const pendingIdsRef = useRef<string[]>([]);
-  const tokensRef = useRef<TokenModel[]>([]);
   const commitLockRef = useRef(false);
-
-  useEffect(() => {
-    pendingIdsRef.current = pendingIds;
-  }, [pendingIds]);
-
-  useEffect(() => {
-    tokensRef.current = tokens;
-  }, [tokens]);
+  const commitRemainingRef = useRef(0);
 
   const clearQueuedTimeouts = useCallback(() => {
     for (const timeoutId of timeoutIdsRef.current) {
@@ -1490,49 +1493,52 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
 
   const finishCommit = useCallback(() => {
     commitLockRef.current = false;
+    commitRemainingRef.current = 0;
     setIsCommitting(false);
     timerDeadlineRef.current = null;
     setTimeLeftMs(0);
   }, []);
 
-  const drainNext = useCallback(() => {
-    const anchors = anchorsRef.current;
-    const nextPendingId = pendingIdsRef.current[0];
-
-    if (!anchors || !nextPendingId) {
-      finishCommit();
-      return;
-    }
-
-    setPendingIds((current) => current.filter((item) => item !== nextPendingId));
-    setTokens((current) =>
-      current.map((token) => {
-        if (token.id !== nextPendingId) {
-          return token;
-        }
-
-        return {
-          ...token,
-          phase: "drop",
-          from: { x: token.x, y: token.y },
-          to: anchors.counter,
-          motionKey: token.motionKey + 1,
-        };
-      })
-    );
-  }, [finishCommit]);
-
   const startCommit = useCallback(() => {
-    if (commitLockRef.current || pendingIdsRef.current.length === 0) {
+    const anchors = anchorsRef.current;
+    const commitIds = [...pendingIdsRef.current];
+
+    if (commitLockRef.current || commitIds.length === 0 || !anchors) {
       return;
     }
 
     commitLockRef.current = true;
+    commitRemainingRef.current = commitIds.length;
     setIsCommitting(true);
+    pendingIdsRef.current = [];
+    setPendingIds([]);
     timerDeadlineRef.current = null;
     setTimeLeftMs(0);
-    drainNext();
-  }, [drainNext]);
+
+    const staggerMs = clamp(Math.round(1200 / commitIds.length), 40, variant.drainGap);
+
+    commitIds.forEach((tokenId, index) => {
+      schedule(() => {
+        setTokens((current) =>
+          current.map((token) => {
+            if (token.id !== tokenId) {
+              return token;
+            }
+
+            return {
+              ...token,
+              phase: "drop",
+              from: { x: token.x, y: token.y },
+              to: anchors.counter,
+              motionKey: token.motionKey + 1,
+              motionIndex: index,
+              motionTotal: commitIds.length,
+            };
+          })
+        );
+      }, index * staggerMs);
+    });
+  }, [schedule, variant.drainGap]);
 
   useEffect(() => {
     if (isCommitting || pendingIds.length === 0) {
@@ -1584,9 +1590,11 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
       const id = makeTokenId();
       const pendingCount = pendingIdsRef.current.length;
       const nextTotal = pendingCount + 1;
-      const rank = sequenceRef.current;
       const holdPoint = getHoldPoint(variant.holdPattern, pendingCount, nextTotal, anchors.metrics);
       const startPoint = anchors[source];
+      const nextPendingIds = [...pendingIdsRef.current, id];
+
+      pendingIdsRef.current = nextPendingIds;
 
       setTokens((current) => [
         ...current,
@@ -1598,10 +1606,12 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
           from: startPoint,
           to: holdPoint,
           motionKey: 0,
-          rank,
+          motionIndex: pendingCount,
+          motionTotal: nextTotal,
+          zOrder: sequenceRef.current,
         },
       ]);
-      setPendingIds((current) => [...current, id]);
+      setPendingIds(nextPendingIds);
       resetTimer();
     },
     [makeTokenId, resetTimer, variant.holdPattern]
@@ -1656,7 +1666,9 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
 
     const pendingId = pendingIdsRef.current.at(-1);
     if (pendingId) {
-      setPendingIds((current) => current.slice(0, -1));
+      const nextPendingIds = pendingIdsRef.current.slice(0, -1);
+      pendingIdsRef.current = nextPendingIds;
+      setPendingIds(nextPendingIds);
       setTokens((current) =>
         current.map((token) => {
           if (token.id !== pendingId) {
@@ -1669,6 +1681,8 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
             from: { x: token.x, y: token.y },
             to: anchors.minus,
             motionKey: token.motionKey + 1,
+            motionIndex: 0,
+            motionTotal: 1,
           };
         })
       );
@@ -1698,7 +1712,9 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
         from: anchors.counter,
         to: anchors.minus,
         motionKey: 0,
-        rank: sequenceRef.current,
+        motionIndex: 0,
+        motionTotal: 1,
+        zOrder: sequenceRef.current,
       },
     ]);
   }, [committedTotal, isCommitting, isReady, makeTokenId, resetTimer]);
@@ -1706,18 +1722,28 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
   const handleMotionComplete = useCallback(
     (id: string, phase: MotionPhase) => {
       if (phase === "launch") {
+        const metrics = anchorsRef.current?.metrics;
+        const nextIndex = pendingIdsRef.current.indexOf(id);
         setTokens((current) =>
           current.map((token) => {
             if (token.id !== id) {
               return token;
             }
 
+            const holdPoint =
+              metrics && nextIndex !== -1
+                ? getHoldPoint(variant.holdPattern, nextIndex, pendingIdsRef.current.length, metrics)
+                : token.to;
+
             return {
               ...token,
               phase: "hold",
-              x: token.to.x,
-              y: token.to.y,
-              from: token.to,
+              x: holdPoint.x,
+              y: holdPoint.y,
+              from: holdPoint,
+              to: holdPoint,
+              motionIndex: 0,
+              motionTotal: 1,
             };
           })
         );
@@ -1728,14 +1754,10 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
         setTokens((current) => current.filter((token) => token.id !== id));
         setCommittedTotal((current) => current + 1);
         pulseCounter("up");
-        schedule(() => {
-          if (pendingIdsRef.current.length === 0) {
-            finishCommit();
-            return;
-          }
-
-          drainNext();
-        }, variant.drainGap);
+        commitRemainingRef.current = Math.max(0, commitRemainingRef.current - 1);
+        if (commitRemainingRef.current === 0) {
+          finishCommit();
+        }
         return;
       }
 
@@ -1754,7 +1776,7 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
         pulseCounter("down");
       }
     },
-    [drainNext, finishCommit, pulseCounter, schedule, variant.drainGap]
+    [finishCommit, pulseCounter, variant.holdPattern]
   );
 
   const resetDemo = useCallback(() => {
@@ -1762,6 +1784,8 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
     sequenceRef.current = 0;
     timerDeadlineRef.current = null;
     commitLockRef.current = false;
+    commitRemainingRef.current = 0;
+    pendingIdsRef.current = [];
     setTokens([]);
     setPendingIds([]);
     setCommittedTotal(variant.initialTotal);
@@ -1769,7 +1793,7 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
     setIsCommitting(false);
   }, [clearQueuedTimeouts, variant.initialTotal]);
 
-  const progressPercent = pendingIds.length === 0 ? 0 : (timeLeftMs / BUFFER_MS) * 100;
+  const progressPercent = isCommitting ? 100 : pendingIds.length === 0 ? 0 : (timeLeftMs / BUFFER_MS) * 100;
   const statusLabel = useMemo(() => {
     if (!isReady) {
       return "Калибрую траектории";
@@ -1808,7 +1832,10 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
   );
 
   return (
-    <Card className={cn(styles.variantCard, "shadow-[0_28px_80px_-52px_rgba(0,0,0,0.9)]")}>
+    <Card
+      className={cn(styles.variantCard, "shadow-[0_28px_80px_-52px_rgba(0,0,0,0.9)]")}
+      data-variant-id={variant.id}
+    >
       <CardHeader className="gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
@@ -1867,7 +1894,6 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
               token={token}
               variant={variant}
               metrics={anchorsRef.current?.metrics ?? { width: 320, height: 420 }}
-              total={Math.max(pendingIds.length, 1)}
               onMotionComplete={handleMotionComplete}
             />
           ))}
