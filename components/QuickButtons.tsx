@@ -3,15 +3,14 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { logger } from "@/lib/logger";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 interface BufferState {
   value: number;
   isActive: boolean;
-  timeLeft: number;
-  timerId: NodeJS.Timeout | null;
 }
 
 type BufferAction =
@@ -20,41 +19,35 @@ type BufferAction =
   | { type: "COMMIT" }
   | { type: "CANCEL" };
 
+const BUFFER_SECONDS = 5;
+const BUFFER_DURATION_MS = BUFFER_SECONDS * 1000;
+const BUFFER_PAUSE_MS = 1000;
+const TIMER_TICK_MS = 100;
+
 const initialBufferState: BufferState = {
   value: 0,
   isActive: false,
-  timeLeft: 0,
-  timerId: null,
 };
 
 function bufferReducer(state: BufferState, action: BufferAction): BufferState {
   switch (action.type) {
     case "START":
-      if (state.timerId) clearTimeout(state.timerId);
       return {
         value: action.payload,
         isActive: true,
-        timeLeft: 5,
-        timerId: null,
       };
 
     case "ADD":
-      if (state.timerId) clearTimeout(state.timerId);
       return {
         ...state,
         value: state.value + action.payload,
-        timeLeft: 5,
-        timerId: null,
       };
 
     case "COMMIT":
     case "CANCEL":
-      if (state.timerId) clearTimeout(state.timerId);
       return {
         value: 0,
         isActive: false,
-        timeLeft: 0,
-        timerId: null,
       };
 
     default:
@@ -64,11 +57,14 @@ function bufferReducer(state: BufferState, action: BufferAction): BufferState {
 
 function median(values: number[]): number | null {
   if (values.length === 0) return null;
+
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
+
   if (sorted.length % 2 === 0) {
     return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
   }
+
   return sorted[mid];
 }
 
@@ -87,7 +83,17 @@ export function QuickButtons({
   const [sending, setSending] = useState(false);
   const [bufferState, dispatch] = useReducer(bufferReducer, initialBufferState);
   const [currentTimeLeft, setCurrentTimeLeft] = useState(0);
-  const bufferTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const latestBufferValueRef = useRef(0);
+  const remainingMsRef = useRef(BUFFER_DURATION_MS);
+  const pauseUntilRef = useRef<number | null>(null);
+  const lastTickRef = useRef<number | null>(null);
+  const commitInFlightRef = useRef(false);
+
+  useEffect(() => {
+    latestBufferValueRef.current = bufferState.value;
+  }, [bufferState.value]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -142,11 +148,23 @@ export function QuickButtons({
     };
   }, [exerciseId]);
 
+  const stopCountdown = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    pauseUntilRef.current = null;
+    lastTickRef.current = null;
+    remainingMsRef.current = BUFFER_DURATION_MS;
+    setCurrentTimeLeft(0);
+  }, []);
+
   useEffect(() => {
     return () => {
-      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+      stopCountdown();
     };
-  }, []);
+  }, [stopCountdown]);
 
   const buttons = useMemo(() => {
     const middle = median(lastReps);
@@ -154,16 +172,23 @@ export function QuickButtons({
     return [middle - 2, middle, middle + 2].map((value) => Math.max(1, value));
   }, [lastReps]);
 
+  const countdownProgress = useMemo(() => {
+    if (!bufferState.isActive || bufferState.value <= 0) return 0;
+    return Math.max(0, Math.min(100, (remainingMsRef.current / BUFFER_DURATION_MS) * 100));
+  }, [bufferState.isActive, bufferState.value, currentTimeLeft]);
+
   const commitBuffer = useCallback(async () => {
-    if (bufferState.value === 0) {
-      if (bufferTimerRef.current) {
-        clearTimeout(bufferTimerRef.current);
-        bufferTimerRef.current = null;
-      }
+    if (commitInFlightRef.current) return;
+
+    const value = latestBufferValueRef.current;
+
+    if (value === 0) {
+      stopCountdown();
       dispatch({ type: "CANCEL" });
       return;
     }
 
+    commitInFlightRef.current = true;
     setSending(true);
     setMsg(null);
 
@@ -171,12 +196,13 @@ export function QuickButtons({
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
+
       if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
       const res = await fetch("/api/sets", {
         method: "POST",
         headers,
-        body: JSON.stringify({ exerciseId, reps: bufferState.value, source: "quickbutton" }),
+        body: JSON.stringify({ exerciseId, reps: value, source: "quickbutton" }),
       });
 
       fetch("/api/telemetry", {
@@ -185,7 +211,7 @@ export function QuickButtons({
         body: JSON.stringify({
           event: "buffer_commit",
           exerciseId,
-          reps: bufferState.value,
+          reps: value,
         }),
       }).catch(() => {});
 
@@ -195,9 +221,9 @@ export function QuickButtons({
         return;
       }
 
-      setLastReps((prev) => [bufferState.value, ...prev].slice(0, 20));
+      setLastReps((prev) => [value, ...prev].slice(0, 20));
       onAdded?.();
-      setMsg(`Подход +${bufferState.value} зафиксирован`);
+      setMsg(`Подход +${value} зафиксирован`);
     } catch (error) {
       logger.warn(
         "Ошибка фиксации буфера",
@@ -206,53 +232,73 @@ export function QuickButtons({
       );
       setMsg("Ошибка сети");
     } finally {
+      commitInFlightRef.current = false;
       setSending(false);
+      stopCountdown();
       dispatch({ type: "COMMIT" });
     }
-  }, [bufferState.value, exerciseId, onAdded]);
+  }, [exerciseId, onAdded, stopCountdown]);
+
+  const timedBufferActive = bufferState.isActive && bufferState.value > 0;
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    if (bufferState.isActive && bufferState.value > 0) {
-      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
-
-      const timerId = setTimeout(() => {
-        if (bufferState.value > 0) commitBuffer();
-      }, 5000);
-
-      bufferTimerRef.current = timerId;
-      setCurrentTimeLeft(5);
-
-      intervalId = setInterval(() => {
-        setCurrentTimeLeft((prev) => {
-          if (prev <= 1) {
-            if (intervalId) clearInterval(intervalId);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      setCurrentTimeLeft(0);
-      if (bufferTimerRef.current) {
-        clearTimeout(bufferTimerRef.current);
-        bufferTimerRef.current = null;
-      }
+    if (!timedBufferActive) {
+      stopCountdown();
+      return;
     }
 
+    remainingMsRef.current = BUFFER_DURATION_MS;
+    pauseUntilRef.current = null;
+    lastTickRef.current = Date.now();
+    setCurrentTimeLeft(BUFFER_SECONDS);
+
+    intervalRef.current = setInterval(() => {
+      const now = Date.now();
+      const pauseUntil = pauseUntilRef.current ?? 0;
+
+      if (pauseUntil > now) {
+        lastTickRef.current = now;
+        return;
+      }
+
+      const lastTick = lastTickRef.current ?? now;
+      const elapsed = now - lastTick;
+
+      lastTickRef.current = now;
+      remainingMsRef.current = Math.max(0, remainingMsRef.current - elapsed);
+
+      setCurrentTimeLeft(Math.ceil(remainingMsRef.current / 1000));
+
+      if (remainingMsRef.current <= 0) {
+        commitBuffer();
+      }
+    }, TIMER_TICK_MS);
+
     return () => {
-      if (intervalId) clearInterval(intervalId);
-      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+      stopCountdown();
     };
-  }, [bufferState.value, bufferState.isActive, commitBuffer]);
+  }, [timedBufferActive, commitBuffer, stopCountdown]);
+
+  const pauseCountdown = useCallback(() => {
+    if (!timedBufferActive) return;
+
+    const now = Date.now();
+    const pauseUntil = pauseUntilRef.current ?? 0;
+
+    if (pauseUntil > now) {
+      return;
+    }
+
+    pauseUntilRef.current = now + BUFFER_PAUSE_MS;
+    lastTickRef.current = now;
+  }, [timedBufferActive]);
 
   const handleButtonClick = useCallback(
     (amount: number) => {
       setMsg(null);
 
       if (amount === -1) {
-        if (todayTotal <= 0) return;
+        if (!bufferState.isActive && todayTotal <= 0) return;
         if (bufferState.isActive && bufferState.value <= 0) return;
       }
 
@@ -265,12 +311,13 @@ export function QuickButtons({
 
       if (bufferState.isActive) {
         dispatch({ type: "ADD", payload: amount });
+        pauseCountdown();
         return;
       }
 
       dispatch({ type: "START", payload: amount });
     },
-    [bufferState.isActive, bufferState.value, todayTotal]
+    [bufferState.isActive, bufferState.value, pauseCountdown, todayTotal]
   );
 
   return (
@@ -335,15 +382,14 @@ export function QuickButtons({
 
       {bufferState.isActive && (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-3" data-testid="quick-buffer-panel">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2" data-testid="quick-buffer-timer">
-              <Badge className="border-zinc-700 bg-zinc-100 text-black">Буфер</Badge>
-              <span className="text-base font-semibold text-zinc-50" data-testid="quick-buffer-value">
-                +{bufferState.value}
-              </span>
-            </div>
-            <div className="flex items-center gap-2" data-testid="quick-buffer-countdown">
-              <span className="text-xs text-zinc-500">Фиксация через {currentTimeLeft}с</span>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2" data-testid="quick-buffer-timer">
+                <Badge className="border-zinc-700 bg-zinc-100 text-black">Буфер</Badge>
+                <span className="text-base font-semibold text-zinc-50" data-testid="quick-buffer-value">
+                  +{bufferState.value}
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
@@ -353,9 +399,26 @@ export function QuickButtons({
                 aria-label="Отменить буфер"
                 title="Отменить добавление подхода"
               >
-                ×
+                x
               </Button>
             </div>
+            {timedBufferActive && (
+              <div className="flex items-center gap-3" data-testid="quick-buffer-countdown">
+                <Progress
+                  value={countdownProgress}
+                  className="h-2.5 flex-1 bg-zinc-900"
+                  indicatorClassName="bg-zinc-100"
+                  data-testid="quick-buffer-progress"
+                />
+                <span
+                  className="min-w-8 text-right text-xs font-medium tabular-nums text-zinc-400"
+                  data-testid="quick-buffer-seconds"
+                >
+                  {currentTimeLeft}с
+                </span>
+                <span className="sr-only">Автофиксация через {currentTimeLeft} секунд</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -377,12 +440,6 @@ export function QuickButtons({
             )}
           >
             {msg}
-          </div>
-        )}
-
-        {bufferState.isActive && !msg && (
-          <div className="rounded-2xl border border-zinc-900 bg-black/70 px-3 py-2 text-sm text-zinc-500">
-            Можно скорректировать значение до автосохранения через {currentTimeLeft}с
           </div>
         )}
       </div>
