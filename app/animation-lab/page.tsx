@@ -1,20 +1,11 @@
-import { getOptionalAppSession } from "@/lib/appSession";
-import { Header } from "@/components/Header";
-import { SetAnimationLab } from "@/components/SetAnimationLab";
+import { Suspense } from "react";
+import { AnimationLabPageContent } from "@/app/animation-lab/AnimationLabPageContent";
+import { AnimationLabPageSkeleton } from "@/components/PageSkeletons";
 
-export default async function AnimationLabPage() {
-  const session = await getOptionalAppSession();
-
+export default function AnimationLabPage() {
   return (
-    <>
-      <Header
-        currentPath="/animation-lab"
-        title="Лаборатория анимаций"
-        userEmail={session.user?.email ?? null}
-      />
-      <main className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        <SetAnimationLab />
-      </main>
-    </>
+    <Suspense fallback={<AnimationLabPageSkeleton />}>
+      <AnimationLabPageContent />
+    </Suspense>
   );
 }

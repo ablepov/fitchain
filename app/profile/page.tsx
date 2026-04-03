@@ -1,18 +1,11 @@
-import { Header } from "@/components/Header";
-import { getProfilePageData } from "@/lib/trainingData";
-import { ProfileClient } from "@/app/profile/ProfileClient";
+import { Suspense } from "react";
+import { ProfilePageContent } from "@/app/profile/ProfilePageContent";
+import { ProfilePageSkeleton } from "@/components/PageSkeletons";
 
-export default async function ProfilePage() {
-  const data = await getProfilePageData();
-
+export default function ProfilePage() {
   return (
-    <>
-      <Header currentPath="/profile" title="Профиль" userEmail={data.email} />
-      <ProfileClient
-        initialEmail={data.email}
-        initialTimezone={data.timezone}
-        initialExercises={data.exercises}
-      />
-    </>
+    <Suspense fallback={<ProfilePageSkeleton />}>
+      <ProfilePageContent />
+    </Suspense>
   );
 }
