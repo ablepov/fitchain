@@ -12,6 +12,7 @@ const BUFFER_MS = 4200;
 const TICK_MS = 50;
 const TOKEN_SIZE = 34;
 const MAX_PENDING = 18;
+const ACTIVE_VARIANT_ID = "halo-stack";
 
 type MotionPhase = "launch" | "hold" | "drop" | "removePending" | "removeCommitted";
 type CounterDirection = "up" | "down";
@@ -478,9 +479,9 @@ const VARIANTS: VariantConfig[] = [
   {
     id: "halo-stack",
     name: "Стек",
-    badge: "5 / вертикаль",
-    description: "Очередь собирается почти в компактный тотем над сценой и затем по одной сваливается вниз с плотным ударом.",
-    vibe: "Плотный и читаемый.",
+    badge: "выбранный вариант",
+    description: "Очередь собирается в плотный стек над сценой и быстро влетает в центральную общую цифру.",
+    vibe: "Плотный, читаемый и самый стабильный.",
     accent: "#56c9ff",
     accentStrong: "#b8ebff",
     accentSoft: "rgba(86, 201, 255, 0.16)",
@@ -491,7 +492,7 @@ const VARIANTS: VariantConfig[] = [
     floatPreset: "bob",
     initialTotal: 27,
     spawnGap: 82,
-    drainGap: 92,
+    drainGap: 84,
     launch: {
       duration: 780,
       lift: 112,
@@ -507,18 +508,18 @@ const VARIANTS: VariantConfig[] = [
       settleScale: 0.92,
     },
     drop: {
-      duration: 610,
-      preLift: 10,
-      lift: 34,
-      side: 10,
-      kickX: 2,
-      overshootX: 6,
-      overshootY: -4,
-      rotateKick: 6,
-      rotateMid: 10,
-      rotateEnd: -8,
-      easing: "cubic-bezier(0.08, 0.9, 0.18, 1)",
-      impactScale: 1.18,
+      duration: 540,
+      preLift: 8,
+      lift: 56,
+      side: 4,
+      kickX: 0,
+      overshootX: 0,
+      overshootY: -8,
+      rotateKick: 2,
+      rotateMid: 4,
+      rotateEnd: 0,
+      easing: "cubic-bezier(0.06, 0.92, 0.18, 1)",
+      impactScale: 1.24,
     },
     removePending: {
       duration: 430,
@@ -957,6 +958,8 @@ const VARIANTS: VariantConfig[] = [
   },
 ];
 
+const ACTIVE_VARIANT = VARIANTS.find((variant) => variant.id === ACTIVE_VARIANT_ID) ?? VARIANTS[0];
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -1299,8 +1302,7 @@ function AnimatedToken({
 
 function VariantCard({ variant }: { variant: VariantConfig }) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
-  const counterRef = useRef<HTMLDivElement | null>(null);
-  const centerEmojiRef = useRef<HTMLDivElement | null>(null);
+  const totalRef = useRef<HTMLDivElement | null>(null);
   const minusRef = useRef<HTMLButtonElement | null>(null);
   const plusOneRef = useRef<HTMLButtonElement | null>(null);
   const plusThreeRef = useRef<HTMLButtonElement | null>(null);
@@ -1345,7 +1347,7 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
   );
 
   const measureScene = useCallback(() => {
-    if (!sceneRef.current || !counterRef.current || !minusRef.current || !plusOneRef.current || !plusThreeRef.current || !plusFiveRef.current) {
+    if (!sceneRef.current || !totalRef.current || !minusRef.current || !plusOneRef.current || !plusThreeRef.current || !plusFiveRef.current) {
       return;
     }
 
@@ -1369,7 +1371,7 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
       plus1: toPoint(plusOneRef.current),
       plus3: toPoint(plusThreeRef.current),
       plus5: toPoint(plusFiveRef.current),
-      counter: toPoint(counterRef.current),
+      counter: toPoint(totalRef.current),
     };
 
     setIsReady(true);
@@ -1441,12 +1443,12 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
   }, []);
 
   useEffect(() => {
-    if (counterPulseTick === 0 || !counterRef.current) {
+    if (counterPulseTick === 0 || !totalRef.current) {
       return;
     }
 
     const motion = buildCounterMotion(counterDirection, variant.counter);
-    const animation = counterRef.current.animate(motion.keyframes, {
+    const animation = totalRef.current.animate(motion.keyframes, {
       duration: motion.duration,
       easing: motion.easing,
       fill: "both",
@@ -1458,16 +1460,16 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
   }, [counterDirection, counterPulseTick, variant.counter]);
 
   useEffect(() => {
-    if (counterPulseTick === 0 || !centerEmojiRef.current) {
+    if (counterPulseTick === 0 || !totalRef.current) {
       return;
     }
 
-    const animation = centerEmojiRef.current.animate(
+    const animation = totalRef.current.animate(
       [
-        { transform: "translate3d(0, 0, 0) scale(1) rotate(-2deg)" },
-        { offset: 0.28, transform: "translate3d(0, -8px, 0) scale(1.06) rotate(2deg)" },
-        { offset: 0.62, transform: "translate3d(0, 4px, 0) scale(0.98) rotate(-1deg)" },
-        { transform: "translate3d(0, 0, 0) scale(1) rotate(-2deg)" },
+        { transform: "translate3d(0, 0, 0) scale(1)" },
+        { offset: 0.28, transform: "translate3d(0, -10px, 0) scale(1.08)" },
+        { offset: 0.62, transform: "translate3d(0, 4px, 0) scale(0.98)" },
+        { transform: "translate3d(0, 0, 0) scale(1)" },
       ],
       {
         duration: 420,
@@ -1636,16 +1638,16 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
         }, delay);
       }
 
-      if (centerEmojiRef.current) {
-        centerEmojiRef.current.animate(
+      if (totalRef.current) {
+        totalRef.current.animate(
           [
-            { transform: "translate3d(0, 0, 0) scale(1) rotate(-2deg)" },
-            { offset: 0.28, transform: "translate3d(0, -10px, 0) scale(1.08) rotate(3deg)" },
-            { offset: 0.66, transform: "translate3d(0, 4px, 0) scale(0.96) rotate(-1deg)" },
-            { transform: "translate3d(0, 0, 0) scale(1) rotate(-2deg)" },
+            { transform: "translate3d(0, 0, 0) scale(1)" },
+            { offset: 0.28, transform: "translate3d(0, -8px, 0) scale(1.04)" },
+            { offset: 0.66, transform: "translate3d(0, 4px, 0) scale(0.98)" },
+            { transform: "translate3d(0, 0, 0) scale(1)" },
           ],
           {
-            duration: 420,
+            duration: 360,
             easing: "cubic-bezier(0.22, 1, 0.36, 1)",
           }
         );
@@ -1869,22 +1871,14 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
               </div>
               <div className={styles.statusText}>{statusLabel}</div>
             </div>
-
-            <div ref={counterRef} className={styles.counter}>
-              <div className={styles.counterLabel}>Общая цифра</div>
-              <div className={styles.counterValue}>{committedTotal}</div>
-            </div>
           </div>
 
           <div className={styles.holdZone} />
 
           <div className={styles.centerpiece}>
             <div className={styles.centerAura} />
-            <div ref={centerEmojiRef} className={styles.centerEmojiWrap}>
-              <div className={styles.centerEmoji}>{DEMO_EMOJI}</div>
-            </div>
-            <div className={styles.centerCaption}>
-              Большой эмодзи в центре как будущий аватар упражнения. Сейчас это демо с какашкой.
+            <div ref={totalRef} className={styles.centerTotal}>
+              {committedTotal}
             </div>
           </div>
 
@@ -1949,7 +1943,7 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
           </div>
           <div className={styles.metaPill}>
             <div className={styles.metaLabel}>Сценарий</div>
-            <div className={styles.metaValue}>Эмодзи взлетают от кнопки, висят до конца таймера и затем падают в общий счёт по одному.</div>
+            <div className={styles.metaValue}>Эмодзи взлетают от кнопки, висят сверху и затем быстро влетают в центральную цифру.</div>
           </div>
         </div>
       </CardContent>
@@ -1964,16 +1958,14 @@ export function SetAnimationLab() {
         <CardHeader className="gap-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-3">
-              <Badge className="border-zinc-800 bg-zinc-950 text-zinc-300">10 интерактивных вариантов</Badge>
+              <Badge className="border-zinc-800 bg-zinc-950 text-zinc-300">выбранный сценарий</Badge>
               <div className="max-w-3xl">
                 <CardTitle className="text-2xl text-zinc-50 sm:text-3xl">
-                  Лаборатория геймифицированного добавления подходов
+                  Доотладка варианта «Стек»
                 </CardTitle>
                 <CardDescription className="mt-3 text-base leading-7 text-zinc-300">
-                  Здесь каждый вариант повторяет твою идею: эмодзи подлетают от кнопок вверх, висят под таймером,
-                  а потом быстро падают в общую цифру по одному. Цифра на каждый влет трясётся и растёт. Для демо
-                  используется большая центральная какашка, но сам сценарий уже готов под будущий выбор эмодзи для
-                  упражнений.
+                  Оставили один вариант, который оказался самым стабильным. Теперь общий счёт стоит в центре сцены,
+                  без подписи, и вся пачка после таймера летит именно в него.
                 </CardDescription>
               </div>
             </div>
@@ -1982,15 +1974,15 @@ export function SetAnimationLab() {
               <div className="rounded-3xl border border-zinc-800 bg-zinc-950/70 px-4 py-3">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Как читать демо</div>
                 <div className="mt-2 text-sm leading-6 text-zinc-300">
-                  `+` добавляет эмодзи в буфер. `-1` снимает последний сверху или вычитает уже засчитанный. Таймер
-                  одинаковый, а вся разница только в характере движения и реакции счётчика.
+                  `+` добавляет эмодзи в буфер. `-1` снимает последний сверху или вычитает уже засчитанный. После
+                  таймера стек быстро влетает в центральную цифру.
                 </div>
               </div>
               <div className="rounded-3xl border border-zinc-800 bg-black/70 px-4 py-3">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">На что смотреть</div>
                 <div className="mt-2 text-sm leading-6 text-zinc-300">
-                  Насколько приятно висят эмодзи наверху, как читается падение по одному, и не кажется ли удар в
-                  цифру слишком жёстким или, наоборот, слишком вялым.
+                  Насколько читаемо собирается стек наверху, как он доезжает до центра и достаточно ли мощно
+                  реагирует сама цифра.
                 </div>
               </div>
             </div>
@@ -1998,10 +1990,8 @@ export function SetAnimationLab() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        {VARIANTS.map((variant) => (
-          <VariantCard key={variant.id} variant={variant} />
-        ))}
+      <div className="grid gap-4">
+        <VariantCard variant={ACTIVE_VARIANT} />
       </div>
     </div>
   );
