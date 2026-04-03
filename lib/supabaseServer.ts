@@ -5,6 +5,11 @@ import type { NextRequest } from "next/server";
 import { getAuthorizationHeader } from "@/lib/api";
 import { getSupabasePublicEnv } from "@/lib/supabaseEnv";
 
+export type AuthenticatedAppUser = {
+  id: string;
+  email?: string | null;
+};
+
 function getSupabaseServerConfig() {
   const { url, publishableKey } = getSupabasePublicEnv();
 
@@ -42,6 +47,25 @@ export async function createServerSupabaseClient() {
   });
 }
 
+export function extractAuthenticatedAppUser(
+  claims: Record<string, unknown> | null | undefined
+): AuthenticatedAppUser | null {
+  if (!claims) {
+    return null;
+  }
+
+  const id = typeof claims.sub === "string" ? claims.sub : null;
+
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    email: typeof claims.email === "string" ? claims.email : null,
+  };
+}
+
 export function createRouteSupabaseClient(req: NextRequest) {
   const { url, publishableKey } = getSupabaseServerConfig();
   const authHeader = getAuthorizationHeader(req);
@@ -70,12 +94,13 @@ export function createRouteSupabaseClient(req: NextRequest) {
 
 export async function getAuthenticatedRouteContext(req: NextRequest) {
   const supabase = createRouteSupabaseClient(req);
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getClaims();
+  const user = extractAuthenticatedAppUser((data?.claims as Record<string, unknown> | undefined) ?? null);
 
   return {
     supabase,
-    user: data.user,
-    userId: data.user?.id ?? null,
+    user,
+    userId: user?.id ?? null,
     authError: error,
   };
 }

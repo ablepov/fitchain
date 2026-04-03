@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabaseServer";
+import { createServerSupabaseClient, extractAuthenticatedAppUser } from "@/lib/supabaseServer";
 import { getMockUser, isE2EMockMode } from "@/lib/e2eMock";
 
 type OptionalSessionResult = {
@@ -39,9 +39,8 @@ export async function getOptionalAppSession(): Promise<OptionalSessionResult> {
   }
 
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const user = extractAuthenticatedAppUser((data?.claims as Record<string, unknown> | undefined) ?? null);
 
   return {
     isMock: false,
