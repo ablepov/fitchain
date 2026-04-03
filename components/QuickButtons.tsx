@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { startTransition, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { logger } from "@/lib/logger";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,20 +36,14 @@ function bufferReducer(state: BufferState, action: BufferAction): BufferState {
         value: action.payload,
         isActive: true,
       };
-
     case "ADD":
       return {
         ...state,
         value: state.value + action.payload,
       };
-
     case "COMMIT":
     case "CANCEL":
-      return {
-        value: 0,
-        isActive: false,
-      };
-
+      return initialBufferState;
     default:
       return state;
   }
@@ -70,15 +64,17 @@ function median(values: number[]): number | null {
 
 export function QuickButtons({
   exerciseId,
+  initialLastReps = [],
   onAdded,
   todayTotal = 0,
 }: {
   exerciseId: string;
+  initialLastReps?: number[];
   onAdded?: () => void;
   todayTotal?: number;
 }) {
-  const [lastReps, setLastReps] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [lastReps, setLastReps] = useState<number[]>(initialLastReps);
   const [msg, setMsg] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [bufferState, dispatch] = useReducer(bufferReducer, initialBufferState);
@@ -94,59 +90,6 @@ export function QuickButtons({
   useEffect(() => {
     latestBufferValueRef.current = bufferState.value;
   }, [bufferState.value]);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setMsg(null);
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        const params = new URLSearchParams({ exerciseId, limit: "20" });
-        const res = await fetch(`/api/sets?${params.toString()}`, {
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-          if (!isCancelled) {
-            setMsg("Ошибка загрузки данных");
-            setLoading(false);
-          }
-          return;
-        }
-
-        const json = await res.json();
-        const reps: number[] = (json.data as Array<{ reps: number }>).map((record) => record.reps);
-
-        if (!isCancelled) {
-          setLastReps(reps);
-          setLoading(false);
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          logger.warn(
-            "Ошибка загрузки истории подходов",
-            "QuickButtons",
-            error instanceof Error ? error : new Error(String(error))
-          );
-          setMsg("Ошибка загрузки данных");
-          setLoading(false);
-        }
-      }
-    };
-
-    loadData();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [exerciseId]);
 
   const stopCountdown = useCallback(() => {
     if (intervalRef.current) {
@@ -168,7 +111,11 @@ export function QuickButtons({
 
   const buttons = useMemo(() => {
     const middle = median(lastReps);
-    if (!middle) return [3, 5, 8];
+
+    if (!middle) {
+      return [3, 5, 8];
+    }
+
     return [middle - 2, middle, middle + 2].map((value) => Math.max(1, value));
   }, [lastReps]);
 
@@ -193,11 +140,7 @@ export function QuickButtons({
     setMsg(null);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-
-      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
       const res = await fetch("/api/sets", {
         method: "POST",
@@ -223,6 +166,9 @@ export function QuickButtons({
 
       setLastReps((prev) => [value, ...prev].slice(0, 20));
       onAdded?.();
+      startTransition(() => {
+        router.refresh();
+      });
       setMsg(`Подход +${value} зафиксирован`);
     } catch (error) {
       logger.warn(
@@ -237,7 +183,7 @@ export function QuickButtons({
       stopCountdown();
       dispatch({ type: "COMMIT" });
     }
-  }, [exerciseId, onAdded, stopCountdown]);
+  }, [exerciseId, onAdded, router, stopCountdown]);
 
   const timedBufferActive = bufferState.isActive && bufferState.value > 0;
 
@@ -270,7 +216,7 @@ export function QuickButtons({
       setCurrentTimeLeft(Math.ceil(remainingMsRef.current / 1000));
 
       if (remainingMsRef.current <= 0) {
-        commitBuffer();
+        void commitBuffer();
       }
     }, TIMER_TICK_MS);
 
@@ -417,26 +363,18 @@ export function QuickButtons({
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        {loading && (
-          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 px-3 py-2 text-sm text-zinc-500">
-            Загрузка истории...
-          </div>
-        )}
-
-        {msg && (
-          <div
-            className={cn(
-              "rounded-2xl border px-3 py-2 text-sm",
-              msg.includes("Ошибка")
-                ? "border-red-950/80 bg-zinc-950 text-red-200"
-                : "border-zinc-800 bg-zinc-950 text-zinc-300"
-            )}
-          >
-            {msg}
-          </div>
-        )}
-      </div>
+      {msg ? (
+        <div
+          className={cn(
+            "rounded-2xl border px-3 py-2 text-sm",
+            msg.includes("Ошибка")
+              ? "border-red-950/80 bg-zinc-950 text-red-200"
+              : "border-zinc-800 bg-zinc-950 text-zinc-300"
+          )}
+        >
+          {msg}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,8 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const EXERCISE_ID = "11111111-1111-1111-1111-111111111111";
-const USER_ID = "22222222-2222-4222-8222-222222222222";
-const USER_EMAIL = "tester@example.com";
 
 type Source = "manual" | "quickbutton";
 
@@ -35,108 +33,15 @@ async function mountQuickButtons(page: Page, options: MockOptions = {}) {
   let sets = historyReps.map((reps, index) => buildSet(reps, index));
   const postedBodies: Array<{ exerciseId: string; reps: number; source: Source }> = [];
 
-  const session = {
-    access_token: "test-access-token",
-    refresh_token: "test-refresh-token",
-    expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    token_type: "bearer",
-    user: {
-      id: USER_ID,
-      aud: "authenticated",
-      role: "authenticated",
-      email: USER_EMAIL,
+  await page.context().addCookies([
+    {
+      name: "e2e-history",
+      value: historyReps.length > 0 ? historyReps.join(",") : "__empty__",
+      url: "http://127.0.0.1:3100",
     },
-  };
+  ]);
 
-  await page.addInitScript(({ sessionJson }) => {
-    const originalGetItem = Storage.prototype.getItem;
-    const originalSetItem = Storage.prototype.setItem;
-
-    Storage.prototype.getItem = function getItem(key: string) {
-      if (typeof key === "string" && key.includes("auth-token")) {
-        return sessionJson;
-      }
-
-      return originalGetItem.call(this, key);
-    };
-
-    Storage.prototype.setItem = function setItem(key: string, value: string) {
-      if (typeof key === "string" && key.includes("auth-token")) {
-        return;
-      }
-
-      return originalSetItem.call(this, key, value);
-    };
-  }, { sessionJson: JSON.stringify(session) });
-
-  await page.route("**/auth/v1/user**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        id: USER_ID,
-        aud: "authenticated",
-        role: "authenticated",
-        email: USER_EMAIL,
-      }),
-    });
-  });
-
-  await page.route("**/auth/v1/token**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(session),
-    });
-  });
-
-  await page.route("**/rest/v1/profiles**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ timezone: "Europe/Moscow" }),
-    });
-  });
-
-  await page.route("**/rest/v1/exercises**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify([{ id: EXERCISE_ID, type: "pushups", goal: 100 }]),
-    });
-  });
-
-  await page.route("**/rest/v1/sets**", async (route) => {
-    const url = new URL(route.request().url());
-    const requestedExerciseId = url.searchParams.get("exercise_id")?.replace(/^eq\./, "");
-    const body = sets
-      .filter((item) => !requestedExerciseId || item.exercise_id === requestedExerciseId)
-      .sort((a, b) => b.created_at.localeCompare(a.created_at));
-
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(body),
-    });
-  });
-
-  await page.route("**/api/sets**", async (route) => {
-    if (route.request().method() === "GET") {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          data: sets
-            .filter((item) => item.exercise_id === EXERCISE_ID)
-            .sort((a, b) => b.created_at.localeCompare(a.created_at)),
-          error: null,
-        }),
-      });
-
-      return;
-    }
-
+  await page.route("**/api/sets", async (route) => {
     const body = (await route.request().postDataJSON()) as {
       exerciseId: string;
       reps: number;

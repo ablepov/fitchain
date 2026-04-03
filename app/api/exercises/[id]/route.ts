@@ -10,7 +10,7 @@ const putSchema = z.object({
     .string()
     .min(2)
     .max(100)
-    .regex(/^[a-zA-Zа-яА-Я0-9\s]+$/, "Exercise name can contain only letters, numbers, and spaces"),
+    .regex(/^[\p{L}\p{N}\s]+$/u, "Exercise name can contain only letters, numbers, and spaces"),
   goal: z.number().int().min(1).max(10000),
 });
 
