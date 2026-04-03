@@ -1,11 +1,18 @@
 import { Suspense } from "react";
 import { HomePageContent } from "@/app/_components/HomePageContent";
-import { HomePageSkeleton } from "@/components/PageSkeletons";
+import { Header } from "@/components/Header";
+import { HomePageBodySkeleton } from "@/components/PageSkeletons";
+import { requireSessionSnapshot } from "@/lib/sessionData";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await requireSessionSnapshot();
+
   return (
-    <Suspense fallback={<HomePageSkeleton />}>
-      <HomePageContent />
-    </Suspense>
+    <>
+      <Header currentPath="/" title="Тренировка" userEmail={session.email} />
+      <Suspense fallback={<HomePageBodySkeleton />}>
+        <HomePageContent />
+      </Suspense>
+    </>
   );
 }

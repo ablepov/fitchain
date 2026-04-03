@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient, extractAuthenticatedAppUser } from "@/lib/supabaseServer";
 import { getMockUser, isE2EMockMode } from "@/lib/e2eMock";
@@ -29,7 +30,7 @@ type MockSessionResult = {
   };
 };
 
-export async function getOptionalAppSession(): Promise<OptionalSessionResult> {
+const readOptionalAppSession = cache(async (): Promise<OptionalSessionResult> => {
   if (isE2EMockMode()) {
     return {
       isMock: true,
@@ -47,6 +48,10 @@ export async function getOptionalAppSession(): Promise<OptionalSessionResult> {
     supabase,
     user,
   };
+});
+
+export async function getOptionalAppSession(): Promise<OptionalSessionResult> {
+  return readOptionalAppSession();
 }
 
 export async function requireAppSession(redirectPath = "/auth") {

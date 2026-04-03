@@ -1,8 +1,15 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { createSet } from "@/lib/apiClient";
+import {
+  applyCreatedSetToOverviewCaches,
+  restoreTrainingOverviewCaches,
+  snapshotTrainingOverviewCaches,
+} from "@/lib/cacheUpdates";
 import { logger } from "@/lib/logger";
+import { queryKeys } from "@/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -64,19 +71,15 @@ function median(values: number[]): number | null {
 
 export function QuickButtons({
   exerciseId,
-  initialLastReps = [],
-  onAdded,
+  lastReps = [],
   todayTotal = 0,
 }: {
   exerciseId: string;
-  initialLastReps?: number[];
-  onAdded?: () => void;
+  lastReps?: number[];
   todayTotal?: number;
 }) {
-  const router = useRouter();
-  const [lastReps, setLastReps] = useState<number[]>(initialLastReps);
+  const queryClient = useQueryClient();
   const [msg, setMsg] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
   const [bufferState, dispatch] = useReducer(bufferReducer, initialBufferState);
   const [currentTimeLeft, setCurrentTimeLeft] = useState(0);
 
@@ -86,6 +89,67 @@ export function QuickButtons({
   const pauseUntilRef = useRef<number | null>(null);
   const lastTickRef = useRef<number | null>(null);
   const commitInFlightRef = useRef(false);
+  const mutateSetRef = useRef<((reps: number) => Promise<unknown>) | null>(null);
+  const createSetMutation = useMutation({
+    mutationFn: (reps: number) =>
+      createSet({
+        exerciseId,
+        reps,
+        source: "quickbutton",
+      }),
+    onMutate: async (reps) => {
+      setMsg(null);
+      await queryClient.cancelQueries({ queryKey: queryKeys.trainingOverviewRoot });
+
+      const previousOverviews = snapshotTrainingOverviewCaches(queryClient);
+
+      applyCreatedSetToOverviewCaches(queryClient, {
+        id: `optimistic-${crypto.randomUUID()}`,
+        exercise_id: exerciseId,
+        reps,
+        created_at: new Date().toISOString(),
+        note: null,
+        source: "quickbutton",
+      });
+
+      return { previousOverviews };
+    },
+    onError: (error, _reps, context) => {
+      if (context) {
+        restoreTrainingOverviewCaches(queryClient, context.previousOverviews);
+      }
+
+      logger.warn(
+        "Ошибка фиксации буфера",
+        "QuickButtons",
+        error instanceof Error ? error : new Error(String(error))
+      );
+      setMsg(`Ошибка: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`);
+    },
+    onSuccess: async (createdSet) => {
+      setMsg(`Подход +${createdSet.reps} зафиксирован`);
+
+      fetch("/api/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "buffer_commit",
+          exerciseId,
+          reps: createdSet.reps,
+        }),
+      }).catch(() => undefined);
+
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.trainingOverviewRoot,
+        refetchType: "inactive",
+      });
+    },
+  });
+  const sending = createSetMutation.isPending;
+
+  useEffect(() => {
+    mutateSetRef.current = createSetMutation.mutateAsync;
+  }, [createSetMutation.mutateAsync]);
 
   useEffect(() => {
     latestBufferValueRef.current = bufferState.value;
@@ -136,54 +200,20 @@ export function QuickButtons({
     }
 
     commitInFlightRef.current = true;
-    setSending(true);
     setMsg(null);
 
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-
-      const res = await fetch("/api/sets", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ exerciseId, reps: value, source: "quickbutton" }),
-      });
-
-      fetch("/api/telemetry", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          event: "buffer_commit",
-          exerciseId,
-          reps: value,
-        }),
-      }).catch(() => {});
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        setMsg(`Ошибка: ${res.status} ${json.error?.message ?? ""}`);
-        return;
-      }
-
-      setLastReps((prev) => [value, ...prev].slice(0, 20));
-      onAdded?.();
-      startTransition(() => {
-        router.refresh();
-      });
-      setMsg(`Подход +${value} зафиксирован`);
+      await mutateSetRef.current?.(value);
     } catch (error) {
-      logger.warn(
-        "Ошибка фиксации буфера",
-        "QuickButtons",
-        error instanceof Error ? error : new Error(String(error))
-      );
-      setMsg("Ошибка сети");
+      if (!(error instanceof Error)) {
+        logger.warn("Ошибка фиксации буфера", "QuickButtons", new Error(String(error)));
+      }
     } finally {
       commitInFlightRef.current = false;
-      setSending(false);
       stopCountdown();
       dispatch({ type: "COMMIT" });
     }
-  }, [exerciseId, onAdded, router, stopCountdown]);
+  }, [stopCountdown]);
 
   const timedBufferActive = bufferState.isActive && bufferState.value > 0;
 
@@ -223,7 +253,7 @@ export function QuickButtons({
     return () => {
       stopCountdown();
     };
-  }, [timedBufferActive, commitBuffer, stopCountdown]);
+  }, [timedBufferActive, stopCountdown]);
 
   const pauseCountdown = useCallback(() => {
     if (!timedBufferActive) return;

@@ -125,33 +125,39 @@ export function HomePageSkeleton() {
   return (
     <>
       <HeaderSkeleton currentPath="/" title="Тренировка" />
-      <main className="app-screen">
-        <div className="screen-stack">
-          <Card aria-hidden="true">
-            <CardHeader className="gap-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-2">
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-4 w-64" />
-                </div>
-                <Skeleton className="h-6 w-12 rounded-full" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </div>
-            </CardHeader>
-          </Card>
-
-          <SummaryPanelSkeleton />
-
-          <section className="space-y-3">
-            <ExerciseCardSkeleton />
-            <ExerciseCardSkeleton />
-          </section>
-        </div>
-      </main>
+      <HomePageBodySkeleton />
     </>
+  );
+}
+
+export function HomePageBodySkeleton() {
+  return (
+    <main className="app-screen">
+      <div className="screen-stack">
+        <Card aria-hidden="true">
+          <CardHeader className="gap-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <Skeleton className="h-6 w-12 rounded-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-20 w-full rounded-2xl" />
+              <Skeleton className="h-20 w-full rounded-2xl" />
+            </div>
+          </CardHeader>
+        </Card>
+
+        <SummaryPanelSkeleton />
+
+        <section className="space-y-3">
+          <ExerciseCardSkeleton />
+          <ExerciseCardSkeleton />
+        </section>
+      </div>
+    </main>
   );
 }
 
@@ -159,28 +165,34 @@ export function DashboardPageSkeleton() {
   return (
     <>
       <HeaderSkeleton currentPath="/dashboard" title="Дашборд" />
-      <main className="app-screen">
-        <div className="screen-stack">
-          <Card aria-hidden="true">
-            <CardHeader className="gap-2">
-              <Skeleton className="h-5 w-28" />
-              <Skeleton className="h-4 w-60" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Skeleton className="h-16 w-full rounded-2xl" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-10 w-full rounded-2xl" />
-              </div>
-              <Skeleton className="h-10 w-full rounded-2xl" />
-              <Skeleton className="h-10 w-full rounded-2xl" />
-            </CardContent>
-          </Card>
-
-          <SummaryPanelSkeleton />
-        </div>
-      </main>
+      <DashboardPageBodySkeleton />
     </>
+  );
+}
+
+export function DashboardPageBodySkeleton() {
+  return (
+    <main className="app-screen">
+      <div className="screen-stack">
+        <Card aria-hidden="true">
+          <CardHeader className="gap-2">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-4 w-60" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-16 w-full rounded-2xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-10 w-full rounded-2xl" />
+            </div>
+            <Skeleton className="h-10 w-full rounded-2xl" />
+            <Skeleton className="h-10 w-full rounded-2xl" />
+          </CardContent>
+        </Card>
+
+        <SummaryPanelSkeleton />
+      </div>
+    </main>
   );
 }
 
@@ -188,37 +200,43 @@ export function ProfilePageSkeleton() {
   return (
     <>
       <HeaderSkeleton currentPath="/profile" title="Профиль" />
-      <main className="app-screen">
-        <div className="screen-stack">
-          <Card aria-hidden="true">
-            <CardHeader className="gap-2">
-              <Skeleton className="h-5 w-28" />
-              <Skeleton className="h-4 w-72" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Skeleton className="h-16 w-full rounded-2xl" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-10 w-full rounded-2xl" />
-              </div>
-              <Skeleton className="h-10 w-full rounded-2xl" />
-            </CardContent>
-          </Card>
-
-          <Card aria-hidden="true">
-            <CardHeader className="gap-2">
-              <Skeleton className="h-5 w-48" />
-              <Skeleton className="h-4 w-72" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Skeleton className="h-10 w-full rounded-2xl" />
-              <Skeleton className="h-24 w-full rounded-2xl" />
-              <Skeleton className="h-24 w-full rounded-2xl" />
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <ProfilePageBodySkeleton />
     </>
+  );
+}
+
+export function ProfilePageBodySkeleton() {
+  return (
+    <main className="app-screen">
+      <div className="screen-stack">
+        <Card aria-hidden="true">
+          <CardHeader className="gap-2">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-4 w-72" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-16 w-full rounded-2xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-10 w-full rounded-2xl" />
+            </div>
+            <Skeleton className="h-10 w-full rounded-2xl" />
+          </CardContent>
+        </Card>
+
+        <Card aria-hidden="true">
+          <CardHeader className="gap-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-10 w-full rounded-2xl" />
+            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-24 w-full rounded-2xl" />
+          </CardContent>
+        </Card>
+      </div>
+    </main>
   );
 }
 
@@ -226,31 +244,37 @@ export function AuthPageSkeleton() {
   return (
     <>
       <HeaderSkeleton currentPath="/auth" title="Авторизация" />
-      <main className="app-screen">
-        <div className="screen-stack">
-          <Card aria-hidden="true">
-            <CardHeader className="gap-2">
-              <Skeleton className="h-5 w-36" />
-              <Skeleton className="h-4 w-72" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-10 w-full rounded-2xl" />
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-10 w-full rounded-2xl" />
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Skeleton className="h-10 w-full rounded-2xl" />
-                <Skeleton className="h-10 w-full rounded-2xl" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <AuthPageBodySkeleton />
     </>
+  );
+}
+
+export function AuthPageBodySkeleton() {
+  return (
+    <main className="app-screen">
+      <div className="screen-stack">
+        <Card aria-hidden="true">
+          <CardHeader className="gap-2">
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-4 w-72" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-10 w-full rounded-2xl" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-full rounded-2xl" />
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Skeleton className="h-10 w-full rounded-2xl" />
+              <Skeleton className="h-10 w-full rounded-2xl" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
   );
 }
 
@@ -258,15 +282,21 @@ export function AnimationLabPageSkeleton() {
   return (
     <>
       <HeaderSkeleton currentPath="/animation-lab" title="Лаборатория анимаций" />
-      <main className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
-        <div className="space-y-4">
-          <Skeleton className="h-72 w-full rounded-[2rem]" />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Skeleton className="h-56 w-full rounded-[2rem]" />
-            <Skeleton className="h-56 w-full rounded-[2rem]" />
-          </div>
-        </div>
-      </main>
+      <AnimationLabPageBodySkeleton />
     </>
+  );
+}
+
+export function AnimationLabPageBodySkeleton() {
+  return (
+    <main className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
+      <div className="space-y-4">
+        <Skeleton className="h-72 w-full rounded-[2rem]" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-56 w-full rounded-[2rem]" />
+          <Skeleton className="h-56 w-full rounded-[2rem]" />
+        </div>
+      </div>
+    </main>
   );
 }

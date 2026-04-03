@@ -1,20 +1,18 @@
 import { Suspense } from "react";
 import { DashboardPageContent } from "@/app/dashboard/DashboardPageContent";
-import { DashboardPageSkeleton } from "@/components/PageSkeletons";
+import { Header } from "@/components/Header";
+import { DashboardPageBodySkeleton } from "@/components/PageSkeletons";
+import { requireSessionSnapshot } from "@/lib/sessionData";
 
-type SearchParamsInput =
-  | Promise<Record<string, string | string[] | undefined>>
-  | Record<string, string | string[] | undefined>
-  | undefined;
+export default async function DashboardPage() {
+  const session = await requireSessionSnapshot();
 
-export default function DashboardPage({
-  searchParams,
-}: {
-  searchParams?: SearchParamsInput;
-}) {
   return (
-    <Suspense fallback={<DashboardPageSkeleton />}>
-      <DashboardPageContent searchParams={searchParams} />
-    </Suspense>
+    <>
+      <Header currentPath="/dashboard" title="Дашборд" userEmail={session.email} />
+      <Suspense fallback={<DashboardPageBodySkeleton />}>
+        <DashboardPageContent />
+      </Suspense>
+    </>
   );
 }

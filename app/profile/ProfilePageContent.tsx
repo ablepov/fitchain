@@ -1,18 +1,16 @@
-import { Header } from "@/components/Header";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { ProfilePageClient } from "@/app/profile/ProfilePageClient";
+import { getQueryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
+import { getSessionSnapshot } from "@/lib/sessionData";
 import { getProfilePageData } from "@/lib/trainingData";
-import { ProfileClient } from "@/app/profile/ProfileClient";
 
 export async function ProfilePageContent() {
-  const data = await getProfilePageData();
+  const queryClient = getQueryClient();
+  const [session, data] = await Promise.all([getSessionSnapshot(), getProfilePageData()]);
 
-  return (
-    <>
-      <Header currentPath="/profile" title="Профиль" userEmail={data.email} />
-      <ProfileClient
-        initialEmail={data.email}
-        initialTimezone={data.timezone}
-        initialExercises={data.exercises}
-      />
-    </>
-  );
+  queryClient.setQueryData(queryKeys.session, session);
+  queryClient.setQueryData(queryKeys.profileSnapshot, data);
+
+  return <HydrationBoundary state={dehydrate(queryClient)}><ProfilePageClient /></HydrationBoundary>;
 }

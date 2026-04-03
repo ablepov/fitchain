@@ -1,11 +1,18 @@
-import { Suspense } from "react";
 import { AnimationLabPageContent } from "@/app/animation-lab/AnimationLabPageContent";
-import { AnimationLabPageSkeleton } from "@/components/PageSkeletons";
+import { Header } from "@/components/Header";
+import { getSessionSnapshot } from "@/lib/sessionData";
 
-export default function AnimationLabPage() {
+export default async function AnimationLabPage() {
+  const session = await getSessionSnapshot();
+
   return (
-    <Suspense fallback={<AnimationLabPageSkeleton />}>
+    <>
+      <Header
+        currentPath="/animation-lab"
+        title="Лаборатория анимаций"
+        userEmail={session.email}
+      />
       <AnimationLabPageContent />
-    </Suspense>
+    </>
   );
 }

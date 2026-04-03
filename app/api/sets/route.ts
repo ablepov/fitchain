@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
+import { E2E_MOCK_EXERCISE_ID, E2E_MOCK_TIMEZONE, getMockExercise, getMockHistory, isE2EMockMode } from "@/lib/e2eMock";
 import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
-
-export const runtime = "edge";
 
 const exerciseNameSchema = z
   .string()
@@ -18,6 +18,14 @@ const postSchema = z.object({
   note: z.string().max(500).optional(),
   source: z.enum(["manual", "quickbutton"]).default("quickbutton"),
 });
+
+function isMissingRpcFunction(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  return error.code === "PGRST202" || /function .* does not exist|Could not find the function/i.test(error.message ?? "");
+}
 
 async function resolveOwnedExerciseId(
   userId: string,
@@ -66,6 +74,22 @@ async function resolveOwnedExerciseId(
 }
 
 export async function GET(req: NextRequest) {
+  if (isE2EMockMode()) {
+    const url = new URL(req.url);
+    const exerciseId = url.searchParams.get("exerciseId") || E2E_MOCK_EXERCISE_ID;
+    const cookieStore = await cookies();
+    const mockSets = getMockHistory(cookieStore).map((reps, index) => ({
+      id: `mock-set-${index + 1}`,
+      exercise_id: exerciseId,
+      reps,
+      created_at: new Date(Date.now() - index * 60_000).toISOString(),
+      note: null,
+      source: "quickbutton" as const,
+    }));
+
+    return jsonSuccess(mockSets);
+  }
+
   const { supabase, userId } = await getAuthenticatedRouteContext(req);
   if (!userId) {
     return jsonError(401, "UNAUTHORIZED", "No session");
@@ -119,11 +143,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { supabase, userId } = await getAuthenticatedRouteContext(req);
-  if (!userId) {
-    return jsonError(401, "UNAUTHORIZED", "No session");
-  }
-
   const body = await readJsonSafely<unknown>(req);
   if (!body) {
     return jsonError(400, "VALIDATION_ERROR", "Invalid JSON body");
@@ -138,24 +157,78 @@ export async function POST(req: NextRequest) {
     return jsonError(400, "VALIDATION_ERROR", "exerciseId or exercise is required");
   }
 
-  const resolvedExercise = await resolveOwnedExerciseId(userId, supabase, {
-    exerciseId: parsed.data.exerciseId,
-    exercise: parsed.data.exercise?.trim(),
-  });
+  if (isE2EMockMode()) {
+    const mockExercise = getMockExercise();
+    const note = parsed.data.note?.trim();
 
-  if (resolvedExercise.error || !resolvedExercise.exerciseId) {
-    const message = resolvedExercise.error?.message ?? "Exercise not found";
+    return jsonSuccess(
+      {
+        id: crypto.randomUUID(),
+        exercise_id: parsed.data.exerciseId ?? mockExercise.id,
+        reps: parsed.data.reps,
+        created_at: new Date().toISOString(),
+        note: note ? note : null,
+        source: parsed.data.source,
+        timezone: E2E_MOCK_TIMEZONE,
+      },
+      { status: 201 }
+    );
+  }
+
+  const { supabase, userId } = await getAuthenticatedRouteContext(req);
+  if (!userId) {
+    return jsonError(401, "UNAUTHORIZED", "No session");
+  }
+
+  const resolvedExercise = parsed.data.exerciseId
+    ? { exerciseId: parsed.data.exerciseId }
+    : await resolveOwnedExerciseId(userId, supabase, {
+        exercise: parsed.data.exercise?.trim(),
+      });
+
+  if (resolvedExercise.error) {
+    const message = resolvedExercise.error.message === "Exercise not found"
+      ? "Exercise not found"
+      : resolvedExercise.error.message;
     const status = message === "Exercise not found" ? 404 : 500;
     const code = status === 404 ? "NOT_FOUND" : "INTERNAL_ERROR";
     return jsonError(status, code, message);
   }
 
+  const resolvedExerciseId =
+    parsed.data.exerciseId ?? resolvedExercise.exerciseId;
+
+  if (!resolvedExerciseId) {
+    return jsonError(404, "NOT_FOUND", "Exercise not found");
+  }
+
   const note = parsed.data.note?.trim();
+
+  const rpcInput = {
+    exercise_id: resolvedExerciseId,
+    reps: parsed.data.reps,
+    note: note ? note : null,
+    source: parsed.data.source,
+  };
+
+  const { data: rpcData, error: rpcError } = await supabase.rpc("create_set", rpcInput);
+
+  if (rpcError && !isMissingRpcFunction(rpcError)) {
+    if (rpcError.code === "42501") {
+      return jsonError(403, "FORBIDDEN", rpcError.message);
+    }
+
+    return jsonError(500, "INTERNAL_ERROR", rpcError.message);
+  }
+
+  if (!rpcError) {
+    return jsonSuccess(rpcData, { status: 201 });
+  }
 
   const { data, error } = await supabase
     .from("sets")
     .insert({
-      exercise_id: resolvedExercise.exerciseId,
+      exercise_id: resolvedExerciseId,
       reps: parsed.data.reps,
       note: note ? note : null,
       source: parsed.data.source,

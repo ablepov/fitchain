@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
@@ -25,7 +26,7 @@ function getSupabaseServerConfig() {
   };
 }
 
-export async function createServerSupabaseClient() {
+const createCachedServerSupabaseClient = cache(async () => {
   const cookieStore = await cookies();
   const { url, publishableKey } = getSupabaseServerConfig();
 
@@ -45,6 +46,10 @@ export async function createServerSupabaseClient() {
       },
     },
   });
+});
+
+export async function createServerSupabaseClient() {
+  return createCachedServerSupabaseClient();
 }
 
 export function extractAuthenticatedAppUser(

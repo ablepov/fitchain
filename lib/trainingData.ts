@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { z } from "zod";
 import { getDayBoundsISO } from "@/lib/date";
 import {
   E2E_MOCK_EXERCISE_ID,
@@ -40,6 +41,38 @@ export type ProfilePageData = {
   }>;
 };
 
+const summaryItemSchema = z.object({
+  type: z.string(),
+  total: z.number().int(),
+});
+
+const exerciseOverviewSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  goal: z.number().int(),
+  todayTotal: z.number().int(),
+  lastSetTime: z.string().nullable(),
+  recentReps: z.array(z.number().int()),
+});
+
+const trainingOverviewPayloadSchema = z.object({
+  timezone: z.string(),
+  total: z.number().int(),
+  summary: z.array(summaryItemSchema),
+  exercises: z.array(exerciseOverviewSchema),
+});
+
+const profilePagePayloadSchema = z.object({
+  timezone: z.string(),
+  exercises: z.array(
+    z.object({
+      id: z.string(),
+      type: z.string(),
+      goal: z.number().int(),
+    })
+  ),
+});
+
 function createEmptyOverview(email: string | null, timezone: string): TrainingOverview {
   return {
     email,
@@ -47,6 +80,14 @@ function createEmptyOverview(email: string | null, timezone: string): TrainingOv
     total: 0,
     summary: [],
     exercises: [],
+  };
+}
+
+function createProfilePageData(email: string | null, timezone: string, exercises: ProfilePageData["exercises"]) {
+  return {
+    email,
+    timezone,
+    exercises,
   };
 }
 
@@ -104,12 +145,40 @@ function buildOverviewFromRows(input: {
   };
 }
 
-export async function getTrainingOverview(options?: {
-  includeRecentHistory?: boolean;
-  recentLimit?: number;
-}): Promise<TrainingOverview> {
+function isMissingRpcFunction(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  return error.code === "PGRST202" || /function .* does not exist|Could not find the function/i.test(error.message ?? "");
+}
+
+function parseTrainingOverviewPayload(payload: unknown, email: string | null): TrainingOverview {
+  const parsed = trainingOverviewPayloadSchema.parse(payload);
+
+  return {
+    email,
+    timezone: parsed.timezone,
+    total: parsed.total,
+    summary: parsed.summary,
+    exercises: parsed.exercises,
+  };
+}
+
+function parseProfilePagePayload(payload: unknown, email: string | null): ProfilePageData {
+  const parsed = profilePagePayloadSchema.parse(payload);
+
+  return createProfilePageData(email, parsed.timezone, parsed.exercises);
+}
+
+async function getTrainingOverviewFromQueries(
+  session: Awaited<ReturnType<typeof requireAppSession>>,
+  options?: {
+    includeRecentHistory?: boolean;
+    recentLimit?: number;
+  }
+) {
   const recentLimit = options?.recentLimit ?? 20;
-  const session = await requireAppSession();
 
   if (session.isMock || !session.supabase) {
     const cookieStore = await cookies();
@@ -204,17 +273,11 @@ export async function getTrainingOverview(options?: {
   });
 }
 
-export async function getProfilePageData(): Promise<ProfilePageData> {
-  const session = await requireAppSession();
-
+async function getProfilePageDataFromQueries(session: Awaited<ReturnType<typeof requireAppSession>>) {
   if (session.isMock || !session.supabase) {
     const exercise = getMockExercise();
 
-    return {
-      email: session.user.email ?? null,
-      timezone: E2E_MOCK_TIMEZONE,
-      exercises: [exercise],
-    };
+    return createProfilePageData(session.user.email ?? null, E2E_MOCK_TIMEZONE, [exercise]);
   }
 
   const { supabase, user } = session;
@@ -231,14 +294,64 @@ export async function getProfilePageData(): Promise<ProfilePageData> {
     throw new Error(exercisesResult.error.message);
   }
 
-  return {
-    email: user.email ?? null,
-    timezone: profileResult.data?.timezone ?? E2E_MOCK_TIMEZONE,
-    exercises:
-      exercisesResult.data?.map((exercise) => ({
-        id: exercise.id as string,
-        type: exercise.type as string,
-        goal: exercise.goal as number,
-      })) ?? [],
-  };
+  return createProfilePageData(
+    user.email ?? null,
+    profileResult.data?.timezone ?? E2E_MOCK_TIMEZONE,
+    exercisesResult.data?.map((exercise) => ({
+      id: exercise.id as string,
+      type: exercise.type as string,
+      goal: exercise.goal as number,
+    })) ?? []
+  );
+}
+
+export async function getTrainingOverview(options?: {
+  includeRecentHistory?: boolean;
+  recentLimit?: number;
+}): Promise<TrainingOverview> {
+  const session = await requireAppSession();
+
+  if (session.isMock || !session.supabase) {
+    return getTrainingOverviewFromQueries(session, options);
+  }
+
+  const { supabase, user } = session;
+  const recentLimit = options?.recentLimit ?? 20;
+  const includeRecentHistory = options?.includeRecentHistory !== false;
+
+  const { data, error } = await supabase.rpc("get_training_overview", {
+    include_recent_history: includeRecentHistory,
+    recent_limit: recentLimit,
+  });
+
+  if (error) {
+    if (isMissingRpcFunction(error)) {
+      return getTrainingOverviewFromQueries(session, options);
+    }
+
+    throw new Error(error.message);
+  }
+
+  return parseTrainingOverviewPayload(data, user.email ?? null);
+}
+
+export async function getProfilePageData(): Promise<ProfilePageData> {
+  const session = await requireAppSession();
+
+  if (session.isMock || !session.supabase) {
+    return getProfilePageDataFromQueries(session);
+  }
+
+  const { supabase, user } = session;
+  const { data, error } = await supabase.rpc("get_profile_snapshot");
+
+  if (error) {
+    if (isMissingRpcFunction(error)) {
+      return getProfilePageDataFromQueries(session);
+    }
+
+    throw new Error(error.message);
+  }
+
+  return parseProfilePagePayload(data, user.email ?? null);
 }

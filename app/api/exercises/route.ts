@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
+import { isE2EMockMode } from "@/lib/e2eMock";
 import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
-
-export const runtime = "edge";
 
 const postSchema = z.object({
   type: z
@@ -15,11 +14,6 @@ const postSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const { supabase, userId } = await getAuthenticatedRouteContext(req);
-  if (!userId) {
-    return jsonError(401, "UNAUTHORIZED", "No session");
-  }
-
   const body = await readJsonSafely<unknown>(req);
   if (!body) {
     return jsonError(400, "VALIDATION_ERROR", "Invalid JSON body");
@@ -36,19 +30,21 @@ export async function POST(req: NextRequest) {
 
   const normalizedType = parsed.data.type.trim();
 
-  const { data: existingExercise, error: checkError } = await supabase
-    .from("exercises")
-    .select("id")
-    .eq("user_id", userId)
-    .ilike("type", normalizedType)
-    .maybeSingle();
-
-  if (checkError) {
-    return jsonError(500, "INTERNAL_ERROR", checkError.message);
+  if (isE2EMockMode()) {
+    return jsonSuccess(
+      {
+        id: crypto.randomUUID(),
+        type: normalizedType,
+        goal: parsed.data.goal,
+        created_at: new Date().toISOString(),
+      },
+      { status: 201 }
+    );
   }
 
-  if (existingExercise) {
-    return jsonError(409, "CONFLICT", "Exercise already exists");
+  const { supabase, userId } = await getAuthenticatedRouteContext(req);
+  if (!userId) {
+    return jsonError(401, "UNAUTHORIZED", "No session");
   }
 
   const { data, error } = await supabase
