@@ -13,6 +13,7 @@ const TICK_MS = 50;
 const TOKEN_SIZE = 34;
 const MAX_PENDING = 18;
 const ACTIVE_VARIANT_ID = "halo-stack";
+const DROP_IMPACT_PROGRESS = 0.78;
 
 type MotionPhase = "launch" | "hold" | "drop" | "removePending" | "removeCommitted";
 type CounterDirection = "up" | "down";
@@ -1518,6 +1519,7 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
     setTimeLeftMs(0);
 
     const staggerMs = clamp(Math.round(1200 / commitIds.length), 40, variant.drainGap);
+    const impactDelayMs = Math.round(variant.drop.duration * DROP_IMPACT_PROGRESS);
 
     commitIds.forEach((tokenId, index) => {
       schedule(() => {
@@ -1539,8 +1541,13 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
           })
         );
       }, index * staggerMs);
+
+      schedule(() => {
+        setCommittedTotal((current) => current + 1);
+        pulseCounter("up");
+      }, index * staggerMs + impactDelayMs);
     });
-  }, [schedule, variant.drainGap]);
+  }, [pulseCounter, schedule, variant.drainGap, variant.drop.duration]);
 
   useEffect(() => {
     if (isCommitting || pendingIds.length === 0) {
@@ -1754,8 +1761,6 @@ function VariantCard({ variant }: { variant: VariantConfig }) {
 
       if (phase === "drop") {
         setTokens((current) => current.filter((token) => token.id !== id));
-        setCommittedTotal((current) => current + 1);
-        pulseCounter("up");
         commitRemainingRef.current = Math.max(0, commitRemainingRef.current - 1);
         if (commitRemainingRef.current === 0) {
           finishCommit();
