@@ -12,10 +12,10 @@ interface HeaderProps {
 }
 
 const navItems = [
-  { href: "/", label: "Р“Р»Р°РІРЅР°СЏ" },
-  { href: "/dashboard", label: "Р”Р°С€Р±РѕСЂРґ" },
-  { href: "/animation-lab", label: "Р›Р°Р±" },
-  { href: "/profile", label: "РџСЂРѕС„РёР»СЊ" },
+  { href: "/", label: "Главная" },
+  { href: "/dashboard", label: "Дашборд" },
+  { href: "/animation-lab", label: "Лаб" },
+  { href: "/profile", label: "Профиль" },
 ];
 
 export function Header({ currentPath, title, showBackButton = false, userEmail }: HeaderProps) {
@@ -25,7 +25,7 @@ export function Header({ currentPath, title, showBackButton = false, userEmail }
         <div className="flex items-center gap-3">
           {showBackButton ? (
             <Button asChild size="icon" variant="outline" className="size-10 rounded-full">
-              <Link href="/" aria-label="РќР°Р·Р°Рґ">
+              <Link href="/" aria-label="Назад">
                 <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} />
                 </svg>
@@ -41,7 +41,7 @@ export function Header({ currentPath, title, showBackButton = false, userEmail }
             {title ? (
               <h1 className="mt-1 text-lg font-semibold text-zinc-50">{title}</h1>
             ) : (
-              <p className="mt-1 text-sm text-zinc-500">РљРѕРјРїР°РєС‚РЅС‹Р№ С‚СЂРµРєРµСЂ С‚СЂРµРЅРёСЂРѕРІРѕРє</p>
+              <p className="mt-1 text-sm text-zinc-500">Компактный трекер тренировок</p>
             )}
           </div>
 
@@ -51,13 +51,13 @@ export function Header({ currentPath, title, showBackButton = false, userEmail }
                 <div className="hidden max-w-40 truncate text-right text-xs text-zinc-500 sm:block">{userEmail}</div>
                 <form action={signOutAction}>
                   <Button variant="secondary" size="sm" className="rounded-full" type="submit">
-                    Р’С‹Р№С‚Рё
+                    Выйти
                   </Button>
                 </form>
               </>
             ) : (
               <Button asChild variant="secondary" size="sm" className="rounded-full">
-                <Link href="/auth">Р’РѕР№С‚Рё</Link>
+                <Link href="/auth">Войти</Link>
               </Button>
             )}
           </div>
@@ -66,7 +66,7 @@ export function Header({ currentPath, title, showBackButton = false, userEmail }
         <nav
           className="grid gap-2"
           style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
-          aria-label="РћСЃРЅРѕРІРЅР°СЏ РЅР°РІРёРіР°С†РёСЏ"
+          aria-label="Основная навигация"
         >
           {navItems.map((item) => {
             const active = currentPath === item.href;

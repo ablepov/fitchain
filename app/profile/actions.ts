@@ -12,14 +12,14 @@ type ActionResult<T> =
 function validateExerciseInput(type: string, goal: number) {
   const normalizedType = type.trim();
 
-  if (!normalizedType) return "РќР°Р·РІР°РЅРёРµ РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ";
-  if (normalizedType.length < 2) return "РќР°Р·РІР°РЅРёРµ РґРѕР»Р¶РЅРѕ СЃРѕРґРµСЂР¶Р°С‚СЊ РјРёРЅРёРјСѓРј 2 СЃРёРјРІРѕР»Р°";
-  if (normalizedType.length > 100) return "РќР°Р·РІР°РЅРёРµ РЅРµ РґРѕР»Р¶РЅРѕ РїСЂРµРІС‹С€Р°С‚СЊ 100 СЃРёРјРІРѕР»РѕРІ";
+  if (!normalizedType) return "Название обязательно";
+  if (normalizedType.length < 2) return "Название должно содержать минимум 2 символа";
+  if (normalizedType.length > 100) return "Название не должно превышать 100 символов";
   if (!EXERCISE_NAME_PATTERN.test(normalizedType)) {
-    return "РќР°Р·РІР°РЅРёРµ РјРѕР¶РµС‚ СЃРѕРґРµСЂР¶Р°С‚СЊ С‚РѕР»СЊРєРѕ Р±СѓРєРІС‹, С†РёС„СЂС‹ Рё РїСЂРѕР±РµР»С‹";
+    return "Название может содержать только буквы, цифры и пробелы";
   }
-  if (!Number.isFinite(goal) || goal <= 0) return "Р¦РµР»СЊ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ С‡РёСЃР»РѕРј Р±РѕР»СЊС€Рµ 0";
-  if (goal > 10_000) return "Р¦РµР»СЊ РЅРµ РґРѕР»Р¶РЅР° РїСЂРµРІС‹С€Р°С‚СЊ 10000";
+  if (!Number.isFinite(goal) || goal <= 0) return "Цель должна быть числом больше 0";
+  if (goal > 10_000) return "Цель не должна превышать 10000";
 
   return null;
 }
@@ -30,7 +30,7 @@ export async function saveProfileTimezoneAction(timezone: string): Promise<Actio
   if (isE2EMockMode()) {
     return {
       ok: true,
-      message: "РўР°Р№РјР·РѕРЅР° СЃРѕС…СЂР°РЅРµРЅР°",
+      message: "Таймзона сохранена",
       data: { timezone: normalizedTimezone },
     };
   }
@@ -39,7 +39,7 @@ export async function saveProfileTimezoneAction(timezone: string): Promise<Actio
   if (session.isMock) {
     return {
       ok: true,
-      message: "РўР°Р№РјР·РѕРЅР° СЃРѕС…СЂР°РЅРµРЅР°",
+      message: "Таймзона сохранена",
       data: { timezone: normalizedTimezone },
     };
   }
@@ -52,13 +52,13 @@ export async function saveProfileTimezoneAction(timezone: string): Promise<Actio
   if (error) {
     return {
       ok: false,
-      message: `РћС€РёР±РєР°: ${error.message}`,
+      message: `Ошибка: ${error.message}`,
     };
   }
 
   return {
     ok: true,
-    message: "РўР°Р№РјР·РѕРЅР° СЃРѕС…СЂР°РЅРµРЅР°",
+    message: "Таймзона сохранена",
     data: { timezone: normalizedTimezone },
   };
 }
@@ -80,7 +80,7 @@ export async function createExerciseAction(input: {
   if (isE2EMockMode()) {
     return {
       ok: true,
-      message: `РЈРїСЂР°Р¶РЅРµРЅРёРµ "${normalizedType}" СЃРѕР·РґР°РЅРѕ`,
+      message: `Упражнение "${normalizedType}" создано`,
       data: {
         id: crypto.randomUUID(),
         type: normalizedType,
@@ -93,7 +93,7 @@ export async function createExerciseAction(input: {
   if (session.isMock) {
     return {
       ok: true,
-      message: `РЈРїСЂР°Р¶РЅРµРЅРёРµ "${normalizedType}" СЃРѕР·РґР°РЅРѕ`,
+      message: `Упражнение "${normalizedType}" создано`,
       data: {
         id: crypto.randomUUID(),
         type: normalizedType,
@@ -112,14 +112,14 @@ export async function createExerciseAction(input: {
   if (checkError) {
     return {
       ok: false,
-      message: `РћС€РёР±РєР°: ${checkError.message}`,
+      message: `Ошибка: ${checkError.message}`,
     };
   }
 
   if (existingExercise) {
     return {
       ok: false,
-      message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚",
+      message: "Упражнение с таким названием уже существует",
     };
   }
 
@@ -136,20 +136,20 @@ export async function createExerciseAction(input: {
   if (error?.code === "23505") {
     return {
       ok: false,
-      message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚",
+      message: "Упражнение с таким названием уже существует",
     };
   }
 
   if (error || !data) {
     return {
       ok: false,
-      message: `РћС€РёР±РєР°: ${error?.message ?? "РќРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР°"}`,
+      message: `Ошибка: ${error?.message ?? "Неизвестная ошибка"}`,
     };
   }
 
   return {
     ok: true,
-    message: `РЈРїСЂР°Р¶РЅРµРЅРёРµ "${normalizedType}" СЃРѕР·РґР°РЅРѕ`,
+    message: `Упражнение "${normalizedType}" создано`,
     data: {
       id: data.id as string,
       type: data.type as string,
@@ -176,7 +176,7 @@ export async function updateExerciseAction(input: {
   if (isE2EMockMode()) {
     return {
       ok: true,
-      message: `РЈРїСЂР°Р¶РЅРµРЅРёРµ "${normalizedType}" РѕР±РЅРѕРІР»РµРЅРѕ`,
+      message: `Упражнение "${normalizedType}" обновлено`,
       data: {
         id: input.id,
         type: normalizedType,
@@ -189,7 +189,7 @@ export async function updateExerciseAction(input: {
   if (session.isMock) {
     return {
       ok: true,
-      message: `РЈРїСЂР°Р¶РЅРµРЅРёРµ "${normalizedType}" РѕР±РЅРѕРІР»РµРЅРѕ`,
+      message: `Упражнение "${normalizedType}" обновлено`,
       data: {
         id: input.id,
         type: normalizedType,
@@ -208,7 +208,7 @@ export async function updateExerciseAction(input: {
   if (getError || !existingExercise) {
     return {
       ok: false,
-      message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ РЅРµ РЅР°Р№РґРµРЅРѕ",
+      message: "Упражнение не найдено",
     };
   }
 
@@ -224,14 +224,14 @@ export async function updateExerciseAction(input: {
     if (checkError) {
       return {
         ok: false,
-        message: `РћС€РёР±РєР°: ${checkError.message}`,
+        message: `Ошибка: ${checkError.message}`,
       };
     }
 
     if (duplicateExercise) {
       return {
         ok: false,
-        message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚",
+        message: "Упражнение с таким названием уже существует",
       };
     }
   }
@@ -250,20 +250,20 @@ export async function updateExerciseAction(input: {
   if (error?.code === "23505") {
     return {
       ok: false,
-      message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚",
+      message: "Упражнение с таким названием уже существует",
     };
   }
 
   if (error || !data) {
     return {
       ok: false,
-      message: `РћС€РёР±РєР°: ${error?.message ?? "РќРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР°"}`,
+      message: `Ошибка: ${error?.message ?? "Неизвестная ошибка"}`,
     };
   }
 
   return {
     ok: true,
-    message: `РЈРїСЂР°Р¶РЅРµРЅРёРµ "${normalizedType}" РѕР±РЅРѕРІР»РµРЅРѕ`,
+    message: `Упражнение "${normalizedType}" обновлено`,
     data: {
       id: data.id as string,
       type: data.type as string,
@@ -278,7 +278,7 @@ export async function deleteExerciseAction(input: {
   if (isE2EMockMode()) {
     return {
       ok: true,
-      message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ СѓРґР°Р»РµРЅРѕ",
+      message: "Упражнение удалено",
       data: { id: input.id },
     };
   }
@@ -287,7 +287,7 @@ export async function deleteExerciseAction(input: {
   if (session.isMock) {
     return {
       ok: true,
-      message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ СѓРґР°Р»РµРЅРѕ",
+      message: "Упражнение удалено",
       data: { id: input.id },
     };
   }
@@ -302,7 +302,7 @@ export async function deleteExerciseAction(input: {
   if (getError || !exercise) {
     return {
       ok: false,
-      message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ РЅРµ РЅР°Р№РґРµРЅРѕ",
+      message: "Упражнение не найдено",
     };
   }
 
@@ -315,7 +315,7 @@ export async function deleteExerciseAction(input: {
   if (setsError) {
     return {
       ok: false,
-      message: `РћС€РёР±РєР°: ${setsError.message}`,
+      message: `Ошибка: ${setsError.message}`,
     };
   }
 
@@ -335,13 +335,13 @@ export async function deleteExerciseAction(input: {
   if (error) {
     return {
       ok: false,
-      message: `РћС€РёР±РєР°: ${error.message}`,
+      message: `Ошибка: ${error.message}`,
     };
   }
 
   return {
     ok: true,
-    message: "РЈРїСЂР°Р¶РЅРµРЅРёРµ СѓРґР°Р»РµРЅРѕ",
+    message: "Упражнение удалено",
     data: { id: input.id },
   };
 }

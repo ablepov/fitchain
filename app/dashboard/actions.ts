@@ -16,12 +16,12 @@ export async function saveDashboardTimezoneAction(formData: FormData) {
   const timezone = String(formData.get("timezone") ?? "").trim() || E2E_MOCK_TIMEZONE;
 
   if (isE2EMockMode()) {
-    redirect(createRedirectUrl("РўР°Р№РјР·РѕРЅР° СЃРѕС…СЂР°РЅРµРЅР°"));
+    redirect(createRedirectUrl("Таймзона сохранена"));
   }
 
   const session = await requireAppSession();
   if (session.isMock) {
-    redirect(createRedirectUrl("РўР°Р№РјР·РѕРЅР° СЃРѕС…СЂР°РЅРµРЅР°"));
+    redirect(createRedirectUrl("Таймзона сохранена"));
   }
 
   const { error } = await session.supabase.from("profiles").upsert({
@@ -30,8 +30,8 @@ export async function saveDashboardTimezoneAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(createRedirectUrl(`РћС€РёР±РєР°: ${error.message}`, true));
+    redirect(createRedirectUrl(`Ошибка: ${error.message}`, true));
   }
 
-  redirect(createRedirectUrl("РўР°Р№РјР·РѕРЅР° СЃРѕС…СЂР°РЅРµРЅР°"));
+  redirect(createRedirectUrl("Таймзона сохранена"));
 }

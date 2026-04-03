@@ -30,27 +30,27 @@ export default async function AuthPage({
 
   return (
     <>
-      <Header currentPath="/auth" title="РђРІС‚РѕСЂРёР·Р°С†РёСЏ" userEmail={session.user?.email ?? null} />
+      <Header currentPath="/auth" title="Авторизация" userEmail={session.user?.email ?? null} />
       <main className="app-screen">
         <div className="screen-stack">
           <Card>
             <CardHeader>
-              <CardTitle>Р”РѕСЃС‚СѓРї Рє Р°РєРєР°СѓРЅС‚Сѓ</CardTitle>
-              <CardDescription>Р’С…РѕРґ Рё СЂРµРіРёСЃС‚СЂР°С†РёСЏ Р±РµР· Р»РёС€РЅРёС… РґРµР№СЃС‚РІРёР№, РІ РєРѕРјРїР°РєС‚РЅРѕРј РјРѕР±РёР»СЊРЅРѕРј С„РѕСЂРјР°С‚Рµ.</CardDescription>
+              <CardTitle>Доступ к аккаунту</CardTitle>
+              <CardDescription>Вход и регистрация без лишних действий, в компактном мобильном формате.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {session.user ? (
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-zinc-900 bg-black/70 px-4 py-3 text-sm text-zinc-300">
-                    Р’С‹ СѓР¶Рµ РІРѕС€Р»Рё. РњРѕР¶РЅРѕ РїСЂРѕРґРѕР»Р¶РёС‚СЊ С‚СЂРµРЅРёСЂРѕРІРєСѓ РёР»Рё РІС‹Р№С‚Рё РёР· С‚РµРєСѓС‰РµР№ СЃРµСЃСЃРёРё.
+                    Вы уже вошли. Можно продолжить тренировку или выйти из текущей сессии.
                   </div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Button asChild className="w-full rounded-2xl">
-                      <Link href="/dashboard">РћС‚РєСЂС‹С‚СЊ РґР°С€Р±РѕСЂРґ</Link>
+                      <Link href="/dashboard">Открыть дашборд</Link>
                     </Button>
                     <form action={signOutAction}>
                       <Button variant="secondary" className="w-full rounded-2xl" type="submit">
-                        Р’С‹Р№С‚Рё
+                        Выйти
                       </Button>
                     </form>
                   </div>
@@ -66,9 +66,9 @@ export default async function AuthPage({
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-300" htmlFor="password">
-                      РџР°СЂРѕР»СЊ
+                      Пароль
                     </label>
-                    <Input id="password" name="password" type="password" placeholder="Р’РІРµРґРёС‚Рµ РїР°СЂРѕР»СЊ" required />
+                    <Input id="password" name="password" type="password" placeholder="Введите пароль" required />
                   </div>
 
                   {error ? (
@@ -85,7 +85,7 @@ export default async function AuthPage({
 
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Button className="w-full rounded-2xl" type="submit">
-                      Р’РѕР№С‚Рё
+                      Войти
                     </Button>
                     <Button
                       variant="secondary"
@@ -93,7 +93,7 @@ export default async function AuthPage({
                       type="submit"
                       formAction={signUpAction}
                     >
-                      Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊСЃСЏ
+                      Зарегистрироваться
                     </Button>
                   </div>
                 </form>

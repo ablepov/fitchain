@@ -36,13 +36,13 @@ export default async function DashboardPage({
 
   return (
     <>
-      <Header currentPath="/dashboard" title="Р”Р°С€Р±РѕСЂРґ" userEmail={overview.email} />
+      <Header currentPath="/dashboard" title="Дашборд" userEmail={overview.email} />
       <main className="app-screen">
         <div className="screen-stack">
           <Card>
             <CardHeader>
-              <CardTitle>РђРєРєР°СѓРЅС‚</CardTitle>
-              <CardDescription>Р‘Р°Р·РѕРІС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё РїСЂРѕС„РёР»СЏ Рё С‚РµРєСѓС‰Р°СЏ СЂР°Р±РѕС‡Р°СЏ Р·РѕРЅР°.</CardDescription>
+              <CardTitle>Аккаунт</CardTitle>
+              <CardDescription>Базовые настройки профиля и текущая рабочая зона.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {overview.email ? (
@@ -55,7 +55,7 @@ export default async function DashboardPage({
               <form action={saveDashboardTimezoneAction} className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-300" htmlFor="timezone">
-                    Р§Р°СЃРѕРІРѕР№ РїРѕСЏСЃ
+                    Часовой пояс
                   </label>
                   <Select id="timezone" name="timezone" defaultValue={overview.timezone}>
                     {timezones.map((timezone) => (
@@ -67,7 +67,7 @@ export default async function DashboardPage({
                 </div>
 
                 <Button className="rounded-2xl" type="submit">
-                  РЎРѕС…СЂР°РЅРёС‚СЊ
+                  Сохранить
                 </Button>
               </form>
 

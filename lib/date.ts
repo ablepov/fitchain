@@ -84,19 +84,19 @@ export function getDayBoundsISO(timezone: string, date: Date = new Date()): { st
 
 export function formatRelativeTimeFromNow(isoString: string | null): string {
   if (!isoString) {
-    return "РќРµС‚ РїРѕРґС…РѕРґРѕРІ";
+    return "Нет подходов";
   }
 
   const date = new Date(isoString);
   const now = new Date();
   const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
-  if (diffInMinutes < 1) return "РўРѕР»СЊРєРѕ С‡С‚Рѕ";
-  if (diffInMinutes < 60) return `${diffInMinutes} РјРёРЅ РЅР°Р·Р°Рґ`;
+  if (diffInMinutes < 1) return "Только что";
+  if (diffInMinutes < 60) return `${diffInMinutes} мин назад`;
 
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours} С‡ РЅР°Р·Р°Рґ`;
+  if (diffInHours < 24) return `${diffInHours} ч назад`;
 
   const diffInDays = Math.floor(diffInHours / 24);
-  return `${diffInDays} Рґ РЅР°Р·Р°Рґ`;
+  return `${diffInDays} д назад`;
 }

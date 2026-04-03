@@ -9,7 +9,7 @@ export default async function AnimationLabPage() {
     <>
       <Header
         currentPath="/animation-lab"
-        title="Р›Р°Р±РѕСЂР°С‚РѕСЂРёСЏ Р°РЅРёРјР°С†РёР№"
+        title="Лаборатория анимаций"
         userEmail={session.user?.email ?? null}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">

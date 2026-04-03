@@ -7,7 +7,7 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <Header currentPath="/profile" title="РџСЂРѕС„РёР»СЊ" userEmail={data.email} />
+      <Header currentPath="/profile" title="Профиль" userEmail={data.email} />
       <ProfileClient
         initialEmail={data.email}
         initialTimezone={data.timezone}

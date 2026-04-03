@@ -9,7 +9,7 @@ export function MiniChart({ reps }: MiniChartProps) {
   if (reps.length === 0) {
     return (
       <div className="flex h-16 w-full items-center justify-center rounded-2xl border border-zinc-900 bg-zinc-950">
-        <span className="text-sm text-zinc-500">РќРµС‚ РґР°РЅРЅС‹С… РґР»СЏ РіСЂР°С„РёРєР°</span>
+        <span className="text-sm text-zinc-500">Нет данных для графика</span>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export function MiniChart({ reps }: MiniChartProps) {
         height="100%"
         viewBox={`0 0 ${chartWidth} ${height}`}
         role="img"
-        aria-label="Р“СЂР°С„РёРє РїРѕСЃР»РµРґРЅРёС… РїРѕРґС…РѕРґРѕРІ"
+        aria-label="График последних подходов"
         className="overflow-visible"
       >
         <defs>
