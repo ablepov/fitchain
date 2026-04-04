@@ -26,7 +26,7 @@ type BufferAction =
   | { type: "COMMIT" }
   | { type: "CANCEL" };
 
-const BUFFER_SECONDS = 5;
+const BUFFER_SECONDS = 2;
 const BUFFER_DURATION_MS = BUFFER_SECONDS * 1000;
 const BUFFER_PAUSE_MS = 1000;
 const TIMER_TICK_MS = 100;

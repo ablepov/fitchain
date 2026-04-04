@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import styles from "./ExerciseProgressCard.module.css";
 
 const DEMO_TOKEN = "●";
-const BUFFER_MS = 4200;
+const BUFFER_MS = 2000;
 const TICK_MS = 50;
 const TOKEN_SIZE = 22;
 const MAX_PENDING = 18;
@@ -130,8 +130,13 @@ type SceneAnchors = {
   smart3: Point;
   plus1: Point;
   counter: Point;
-  holdCenterX: number;
-  holdCenterY: number;
+  holdLeft: number;
+  holdTop: number;
+  holdWidth: number;
+  holdHeight: number;
+  progressLeft: number;
+  progressWidth: number;
+  progressCenterY: number;
 };
 
 type SourceKey = "smart1" | "smart2" | "smart3" | "plus1";
@@ -493,8 +498,17 @@ function buildCounterMotion(direction: CounterDirection, tuning: CounterTuning):
   };
 }
 
+function getProgressPoint(total: number, goal: number, anchors: SceneAnchors): Point {
+  const progress = clamp(total / Math.max(goal, 1), 0, 1);
+
+  return {
+    x: anchors.progressLeft + anchors.progressWidth * progress - TOKEN_SIZE / 2,
+    y: anchors.progressCenterY - TOKEN_SIZE / 2,
+  };
+}
+
 function getHoldPoint(_pattern: HoldPattern, index: number, total: number, anchors: SceneAnchors): Point {
-  const maxColumns = 10;
+  const maxColumns = clamp(Math.floor((anchors.holdWidth + 6) / (TOKEN_SIZE + 6)), 1, 10);
   const gapX = 6;
   const gapY = 8;
   const rowIndex = Math.floor(index / maxColumns);
@@ -504,14 +518,14 @@ function getHoldPoint(_pattern: HoldPattern, index: number, total: number, ancho
     rowIndex === totalRows - 1 ? total - rowIndex * maxColumns || Math.min(total, maxColumns) : Math.min(total, maxColumns);
   const rowWidth = rowCount * TOKEN_SIZE + Math.max(0, rowCount - 1) * gapX;
   const blockHeight = totalRows * TOKEN_SIZE + Math.max(0, totalRows - 1) * gapY;
-  const startX = anchors.holdCenterX - rowWidth / 2;
-  const startY = anchors.holdCenterY - blockHeight / 2;
+  const startX = anchors.holdLeft + (anchors.holdWidth - rowWidth) / 2;
+  const startY = anchors.holdTop + (anchors.holdHeight - blockHeight) / 2;
   const x = startX + rowOffset * (TOKEN_SIZE + gapX);
   const y = startY + rowIndex * (TOKEN_SIZE + gapY);
 
   return {
-    x: clamp(x, 14, anchors.metrics.width - TOKEN_SIZE - 14),
-    y: clamp(y, 124, anchors.metrics.height - 124),
+    x: clamp(x, anchors.holdLeft, anchors.holdLeft + anchors.holdWidth - TOKEN_SIZE),
+    y: clamp(y, anchors.holdTop, anchors.holdTop + anchors.holdHeight - TOKEN_SIZE),
   };
 }
 
@@ -635,6 +649,8 @@ export function ExerciseProgressCard({
   theme,
 }: ExerciseProgressCardProps) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
+  const holdZoneRef = useRef<HTMLDivElement | null>(null);
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
   const headlineRef = useRef<HTMLDivElement | null>(null);
   const impactRef = useRef<HTMLSpanElement | null>(null);
   const minusRef = useRef<HTMLButtonElement | null>(null);
@@ -693,6 +709,8 @@ export function ExerciseProgressCard({
   const measureScene = useCallback(() => {
     if (
       !sceneRef.current ||
+      !holdZoneRef.current ||
+      !progressBarRef.current ||
       !impactRef.current ||
       !minusRef.current ||
       !smartOneRef.current ||
@@ -715,14 +733,17 @@ export function ExerciseProgressCard({
       };
     };
 
-    const progressRect = impactRef.current.getBoundingClientRect();
-    const controlsRect = smartTwoRef.current.getBoundingClientRect();
-    const progressBottom = progressRect.bottom - sceneRect.top;
-    const controlsTop = controlsRect.top - sceneRect.top;
-    const zoneTop = progressBottom + 26;
-    const zoneBottom = controlsTop - TOKEN_SIZE - 18;
+    const holdRect = holdZoneRef.current.getBoundingClientRect();
+    const progressRect = progressBarRef.current.getBoundingClientRect();
+    const holdLeft = holdRect.left - sceneRect.left;
+    const holdTop = holdRect.top - sceneRect.top;
+    const holdWidth = holdRect.width;
+    const holdHeight = holdRect.height;
+    const progressLeft = progressRect.left - sceneRect.left;
+    const progressWidth = progressRect.width;
+    const progressCenterY = progressRect.top - sceneRect.top + progressRect.height / 2;
 
-    anchorsRef.current = {
+    const progressAnchors: SceneAnchors = {
       metrics: {
         width: sceneRect.width,
         height: sceneRect.height,
@@ -732,14 +753,24 @@ export function ExerciseProgressCard({
       smart2: toPoint(smartTwoRef.current),
       smart3: toPoint(smartThreeRef.current),
       plus1: toPoint(plusOneRef.current),
-      counter: toPoint(impactRef.current),
-      holdCenterX: sceneRect.width / 2 - TOKEN_SIZE / 2,
-      holdCenterY: clamp((zoneTop + zoneBottom) / 2, zoneTop, Math.max(zoneTop, zoneBottom)),
+      counter: { x: 0, y: 0 },
+      holdLeft,
+      holdTop,
+      holdWidth,
+      holdHeight,
+      progressLeft,
+      progressWidth,
+      progressCenterY,
+    };
+
+    anchorsRef.current = {
+      ...progressAnchors,
+      counter: getProgressPoint(committedTotal, target, progressAnchors),
     };
 
     setIsReady(true);
     setLayoutTick((current) => current + 1);
-  }, []);
+  }, [committedTotal, target]);
 
   useEffect(() => {
     measureScene();
@@ -882,7 +913,8 @@ export function ExerciseProgressCard({
 
     commitIds.forEach((tokenId, index) => {
       schedule(() => {
-        const nextTarget = anchorsRef.current?.counter ?? anchors.counter;
+        const nextAnchors = anchorsRef.current ?? anchors;
+        const nextTarget = getProgressPoint(committedTotal + index + 1, target, nextAnchors);
 
         setTokens((current) =>
           current.map((token) => {
@@ -908,7 +940,7 @@ export function ExerciseProgressCard({
         pulseCounter("up");
       }, index * staggerMs + impactDelayMs);
     });
-  }, [onCommit, pulseCounter, schedule]);
+  }, [committedTotal, onCommit, pulseCounter, schedule, target]);
 
   useEffect(() => {
     if (isCommitting || pendingIds.length === 0) {
@@ -1057,7 +1089,7 @@ export function ExerciseProgressCard({
     }
 
     const id = makeTokenId();
-    const startPoint = anchorsRef.current?.counter ?? anchors.counter;
+    const startPoint = getProgressPoint(committedTotal, target, anchorsRef.current ?? anchors);
 
     setTokens((current) => [
       ...current,
@@ -1074,7 +1106,7 @@ export function ExerciseProgressCard({
         zOrder: sequenceRef.current,
       },
     ]);
-  }, [committedTotal, isCommitting, isReady, makeTokenId, resetTimer]);
+  }, [committedTotal, isCommitting, isReady, makeTokenId, resetTimer, target]);
 
   const handleMotionComplete = useCallback(
     (id: string, phase: MotionPhase) => {
@@ -1178,14 +1210,14 @@ export function ExerciseProgressCard({
               <span className={styles.progressGoal}>{target}</span>
             </div>
 
-            <div className={styles.progressBar}>
+            <div ref={progressBarRef} className={styles.progressBar}>
               <div className={styles.progressProjectedFill} style={{ width: `${projectedProgress}%` }} />
               <div className={styles.progressActualFill} style={{ width: `${actualProgress}%` }} />
               <span ref={impactRef} className={styles.progressImpactDot} style={{ left: `${actualProgress}%` }} />
             </div>
           </div>
 
-          <div className={styles.holdZone} />
+          <div ref={holdZoneRef} className={styles.holdZone} />
 
           {tokens.map((token) => (
             <AnimatedToken
