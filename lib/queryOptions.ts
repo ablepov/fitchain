@@ -3,6 +3,8 @@ import {
   fetchProfileSnapshot,
   fetchSessionSnapshot,
   fetchTrainingOverview,
+  fetchTrainingStats,
+  fetchWeeklyPlan,
 } from "@/lib/apiClient";
 import { DEFAULT_RECENT_LIMIT, queryKeys } from "@/lib/queryKeys";
 
@@ -27,6 +29,22 @@ export function trainingOverviewQueryOptions(options: {
         includeRecentHistory: options.includeRecentHistory,
         recentLimit,
       }),
+    staleTime: 15_000,
+  });
+}
+
+export function trainingStatsQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.trainingStats,
+    queryFn: fetchTrainingStats,
+    staleTime: 15_000,
+  });
+}
+
+export function weeklyPlanQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.weeklyPlan,
+    queryFn: fetchWeeklyPlan,
     staleTime: 15_000,
   });
 }

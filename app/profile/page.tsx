@@ -1,18 +1,14 @@
 import { Suspense } from "react";
 import { ProfilePageContent } from "@/app/profile/ProfilePageContent";
-import { Header } from "@/components/Header";
+import { AppShell } from "@/components/AppShell";
 import { ProfilePageBodySkeleton } from "@/components/PageSkeletons";
-import { requireSessionSnapshot } from "@/lib/sessionData";
 
 export default async function ProfilePage() {
-  const session = await requireSessionSnapshot();
-
   return (
-    <>
-      <Header currentPath="/profile" title="Профиль" userEmail={session.email} />
+    <AppShell title="Профиль">
       <Suspense fallback={<ProfilePageBodySkeleton />}>
         <ProfilePageContent />
       </Suspense>
-    </>
+    </AppShell>
   );
 }

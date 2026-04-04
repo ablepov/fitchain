@@ -1,8 +1,13 @@
 import { NextRequest } from "next/server";
-import { cookies } from "next/headers";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
-import { E2E_MOCK_EXERCISE_ID, E2E_MOCK_TIMEZONE, getMockExercise, getMockHistory, isE2EMockMode } from "@/lib/e2eMock";
+import {
+  E2E_MOCK_TIMEZONE,
+  applyMockStateCookies,
+  getMockExercise,
+  getMockSets,
+  isE2EMockMode,
+} from "@/lib/e2eMock";
 import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
 
 const exerciseNameSchema = z
@@ -76,18 +81,12 @@ async function resolveOwnedExerciseId(
 export async function GET(req: NextRequest) {
   if (isE2EMockMode()) {
     const url = new URL(req.url);
-    const exerciseId = url.searchParams.get("exerciseId") || E2E_MOCK_EXERCISE_ID;
-    const cookieStore = await cookies();
-    const mockSets = getMockHistory(cookieStore).map((reps, index) => ({
-      id: `mock-set-${index + 1}`,
-      exercise_id: exerciseId,
-      reps,
-      created_at: new Date(Date.now() - index * 60_000).toISOString(),
-      note: null,
-      source: "quickbutton" as const,
-    }));
+    const exerciseId = url.searchParams.get("exerciseId");
+    const mockSets = getMockSets(req.cookies);
 
-    return jsonSuccess(mockSets);
+    return jsonSuccess(
+      exerciseId ? mockSets.filter((set) => set.exercise_id === exerciseId) : mockSets
+    );
   }
 
   const { supabase, userId } = await getAuthenticatedRouteContext(req);
@@ -108,9 +107,10 @@ export async function GET(req: NextRequest) {
   });
 
   if (resolvedExercise.error) {
-    const message = resolvedExercise.error.message === "Exercise not found"
-      ? "Exercise not found"
-      : resolvedExercise.error.message;
+    const message =
+      resolvedExercise.error.message === "Exercise not found"
+        ? "Exercise not found"
+        : resolvedExercise.error.message;
     const status = message === "Exercise not found" ? 404 : 500;
     const code = status === 404 ? "NOT_FOUND" : "INTERNAL_ERROR";
     return jsonError(status, code, message);
@@ -158,21 +158,23 @@ export async function POST(req: NextRequest) {
   }
 
   if (isE2EMockMode()) {
-    const mockExercise = getMockExercise();
+    const mockExercise = getMockExercise(req.cookies);
     const note = parsed.data.note?.trim();
+    const createdSet = {
+      id: crypto.randomUUID(),
+      exercise_id: parsed.data.exerciseId ?? mockExercise.id,
+      reps: parsed.data.reps,
+      created_at: new Date().toISOString(),
+      note: note ? note : null,
+      source: parsed.data.source,
+      timezone: E2E_MOCK_TIMEZONE,
+    };
 
-    return jsonSuccess(
-      {
-        id: crypto.randomUUID(),
-        exercise_id: parsed.data.exerciseId ?? mockExercise.id,
-        reps: parsed.data.reps,
-        created_at: new Date().toISOString(),
-        note: note ? note : null,
-        source: parsed.data.source,
-        timezone: E2E_MOCK_TIMEZONE,
-      },
-      { status: 201 }
-    );
+    const response = jsonSuccess(createdSet, { status: 201 });
+    applyMockStateCookies(response, {
+      sets: [createdSet, ...getMockSets(req.cookies)],
+    });
+    return response;
   }
 
   const { supabase, userId } = await getAuthenticatedRouteContext(req);
@@ -187,23 +189,22 @@ export async function POST(req: NextRequest) {
       });
 
   if (resolvedExercise.error) {
-    const message = resolvedExercise.error.message === "Exercise not found"
-      ? "Exercise not found"
-      : resolvedExercise.error.message;
+    const message =
+      resolvedExercise.error.message === "Exercise not found"
+        ? "Exercise not found"
+        : resolvedExercise.error.message;
     const status = message === "Exercise not found" ? 404 : 500;
     const code = status === 404 ? "NOT_FOUND" : "INTERNAL_ERROR";
     return jsonError(status, code, message);
   }
 
-  const resolvedExerciseId =
-    parsed.data.exerciseId ?? resolvedExercise.exerciseId;
+  const resolvedExerciseId = parsed.data.exerciseId ?? resolvedExercise.exerciseId;
 
   if (!resolvedExerciseId) {
     return jsonError(404, "NOT_FOUND", "Exercise not found");
   }
 
   const note = parsed.data.note?.trim();
-
   const rpcInput = {
     exercise_id: resolvedExerciseId,
     reps: parsed.data.reps,

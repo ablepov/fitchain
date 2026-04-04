@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
-import { E2E_MOCK_TIMEZONE, isE2EMockMode } from "@/lib/e2eMock";
+import { applyMockStateCookies, E2E_MOCK_TIMEZONE, isE2EMockMode } from "@/lib/e2eMock";
 import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
 
 const patchSchema = z.object({
@@ -26,7 +26,9 @@ export async function PATCH(req: NextRequest) {
   const timezone = parsed.data.timezone || E2E_MOCK_TIMEZONE;
 
   if (isE2EMockMode()) {
-    return jsonSuccess({ timezone });
+    const response = jsonSuccess({ timezone });
+    applyMockStateCookies(response, { timezone });
+    return response;
   }
 
   const { supabase, userId } = await getAuthenticatedRouteContext(req);

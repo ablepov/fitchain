@@ -1,7 +1,7 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
-import type { ExerciseApiRecord, SetApiRecord } from "@/lib/apiClient";
+import type { SetApiRecord } from "@/lib/apiClient";
 import { DEFAULT_RECENT_LIMIT, queryKeys } from "@/lib/queryKeys";
-import type { ProfilePageData, TrainingOverview } from "@/lib/trainingData";
+import type { ProfilePageData, TrainingOverview, TrainingStats, WeeklyPlan } from "@/lib/trainingTypes";
 
 function updateOverviewExercise(
   overview: TrainingOverview,
@@ -17,6 +17,11 @@ function updateOverviewExercise(
     }
 
     matched = true;
+    const nextChart = [...exercise.chart];
+
+    if (nextChart.length > 0) {
+      nextChart[nextChart.length - 1] = (nextChart[nextChart.length - 1] ?? 0) + setRecord.reps;
+    }
 
     return {
       ...exercise,
@@ -28,6 +33,7 @@ function updateOverviewExercise(
       recentReps: includeRecentHistory
         ? [...exercise.recentReps, setRecord.reps].slice(-Math.max(1, recentLimit))
         : exercise.recentReps,
+      chart: nextChart,
     };
   });
 
@@ -60,10 +66,7 @@ export function snapshotTrainingOverviewCaches(queryClient: QueryClient): Traini
   });
 }
 
-export function restoreTrainingOverviewCaches(
-  queryClient: QueryClient,
-  snapshot: TrainingOverviewCacheSnapshot
-) {
+export function restoreTrainingOverviewCaches(queryClient: QueryClient, snapshot: TrainingOverviewCacheSnapshot) {
   for (const [queryKey, data] of snapshot) {
     queryClient.setQueryData(queryKey, data);
   }
@@ -101,7 +104,7 @@ export function applyTimezoneToCaches(queryClient: QueryClient, timezone: string
     });
   }
 
-  queryClient.setQueryData<ProfilePageData>(queryKeys.profileSnapshot, (current) =>
+  queryClient.setQueryData<TrainingStats>(queryKeys.trainingStats, (current) =>
     current
       ? {
           ...current,
@@ -109,51 +112,21 @@ export function applyTimezoneToCaches(queryClient: QueryClient, timezone: string
         }
       : current
   );
-}
 
-export function applyCreatedExerciseToProfile(queryClient: QueryClient, exercise: ExerciseApiRecord) {
-  queryClient.setQueryData<ProfilePageData>(queryKeys.profileSnapshot, (current) =>
+  queryClient.setQueryData<WeeklyPlan>(queryKeys.weeklyPlan, (current) =>
     current
       ? {
           ...current,
-          exercises: [
-            ...current.exercises,
-            {
-              id: exercise.id,
-              type: exercise.type,
-              goal: exercise.goal,
-            },
-          ],
+          timezone,
         }
       : current
   );
-}
 
-export function applyUpdatedExerciseToProfile(queryClient: QueryClient, exercise: ExerciseApiRecord) {
   queryClient.setQueryData<ProfilePageData>(queryKeys.profileSnapshot, (current) =>
     current
       ? {
           ...current,
-          exercises: current.exercises.map((item) =>
-            item.id === exercise.id
-              ? {
-                  id: exercise.id,
-                  type: exercise.type,
-                  goal: exercise.goal,
-                }
-              : item
-          ),
-        }
-      : current
-  );
-}
-
-export function applyDeletedExerciseToProfile(queryClient: QueryClient, id: string) {
-  queryClient.setQueryData<ProfilePageData>(queryKeys.profileSnapshot, (current) =>
-    current
-      ? {
-          ...current,
-          exercises: current.exercises.filter((exercise) => exercise.id !== id),
+          timezone,
         }
       : current
   );

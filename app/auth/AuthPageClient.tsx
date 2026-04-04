@@ -33,7 +33,7 @@ export function AuthPageClient({
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Button asChild className="w-full rounded-2xl">
-                    <Link href="/dashboard">Открыть дашборд</Link>
+                    <Link href="/">Открыть главную</Link>
                   </Button>
                   <form action={signOutAction}>
                     <Button variant="secondary" className="w-full rounded-2xl" type="submit">

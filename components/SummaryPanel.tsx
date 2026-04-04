@@ -1,4 +1,4 @@
-import type { SummaryItem } from "@/lib/trainingData";
+import type { SummaryItem } from "@/lib/trainingTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";

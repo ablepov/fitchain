@@ -1,10 +1,16 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
-import { isE2EMockMode } from "@/lib/e2eMock";
+import {
+  applyMockStateCookies,
+  getMockExercises,
+  getMockSchedule,
+  getMockSets,
+  isE2EMockMode,
+} from "@/lib/e2eMock";
 import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
 
-const putSchema = z.object({
+const patchSchema = z.object({
   type: z
     .string()
     .min(2)
@@ -26,7 +32,20 @@ export async function DELETE(
   const params = await resolveParams(context);
 
   if (isE2EMockMode()) {
-    return jsonSuccess({ id: params.id, type: "mock exercise" });
+    const currentExercises = getMockExercises(req.cookies);
+    const exercise = currentExercises.find((item) => item.id === params.id);
+
+    if (!exercise) {
+      return jsonError(404, "NOT_FOUND", "Exercise not found");
+    }
+
+    const response = jsonSuccess({ id: params.id, type: exercise.type });
+    applyMockStateCookies(response, {
+      exercises: currentExercises.filter((item) => item.id !== params.id),
+      sets: getMockSets(req.cookies).filter((item) => item.exercise_id !== params.id),
+      plan: getMockSchedule(req.cookies).filter((item) => item.exercise_id !== params.id),
+    });
+    return response;
   }
 
   const { supabase, userId } = await getAuthenticatedRouteContext(req);
@@ -45,18 +64,14 @@ export async function DELETE(
     return jsonError(404, "NOT_FOUND", "Exercise not found");
   }
 
-  const { data: sets, error: setsError } = await supabase
-    .from("sets")
-    .select("id")
+  const { error: deleteScheduleError } = await supabase
+    .from("exercise_schedule")
+    .delete()
     .eq("exercise_id", params.id)
-    .limit(1);
+    .eq("user_id", userId);
 
-  if (setsError) {
-    return jsonError(500, "INTERNAL_ERROR", setsError.message);
-  }
-
-  if ((sets ?? []).length > 0) {
-    return jsonError(409, "CONFLICT", "Delete exercise sets before deleting the exercise");
+  if (deleteScheduleError && deleteScheduleError.code !== "42P01") {
+    return jsonError(500, "INTERNAL_ERROR", deleteScheduleError.message);
   }
 
   const { error: deleteError } = await supabase
@@ -88,7 +103,7 @@ export async function PATCH(
     return jsonError(400, "VALIDATION_ERROR", "Invalid JSON body");
   }
 
-  const parsed = putSchema.safeParse(body);
+  const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError(
       400,
@@ -101,12 +116,32 @@ export async function PATCH(
   const normalizedType = parsed.data.type.trim();
 
   if (isE2EMockMode()) {
-    return jsonSuccess({
-      id: params.id,
+    const currentExercises = getMockExercises(req.cookies);
+    const currentExercise = currentExercises.find((item) => item.id === params.id);
+
+    if (!currentExercise) {
+      return jsonError(404, "NOT_FOUND", "Exercise not found");
+    }
+
+    const duplicate = currentExercises.some(
+      (item) => item.id !== params.id && item.type.toLowerCase() === normalizedType.toLowerCase()
+    );
+
+    if (duplicate) {
+      return jsonError(409, "CONFLICT", "Exercise already exists");
+    }
+
+    const updatedExercise = {
+      ...currentExercise,
       type: normalizedType,
       goal: parsed.data.goal,
-      created_at: new Date().toISOString(),
+    };
+
+    const response = jsonSuccess(updatedExercise);
+    applyMockStateCookies(response, {
+      exercises: currentExercises.map((item) => (item.id === params.id ? updatedExercise : item)),
     });
+    return response;
   }
 
   const { supabase, userId } = await getAuthenticatedRouteContext(req);

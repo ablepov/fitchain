@@ -9,7 +9,7 @@ function createRedirectUrl(message: string, isError = false) {
     [isError ? "error" : "message"]: message,
   });
 
-  return `/dashboard?${params.toString()}`;
+  return `/stats?${params.toString()}`;
 }
 
 export async function saveDashboardTimezoneAction(formData: FormData) {

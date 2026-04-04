@@ -21,7 +21,7 @@ export async function signInAction(formData: FormData) {
   }
 
   if (isE2EMockMode()) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -34,7 +34,7 @@ export async function signInAction(formData: FormData) {
     redirect(getAuthRedirect("/auth", "error", error.message));
   }
 
-  redirect("/dashboard");
+  redirect("/");
 }
 
 export async function signUpAction(formData: FormData) {
@@ -46,7 +46,7 @@ export async function signUpAction(formData: FormData) {
   }
 
   if (isE2EMockMode()) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -59,7 +59,7 @@ export async function signUpAction(formData: FormData) {
     redirect(getAuthRedirect("/auth", "error", error.message));
   }
 
-  redirect(getAuthRedirect("/dashboard", "message", "Account created"));
+  redirect(getAuthRedirect("/", "message", "Account created"));
 }
 
 export async function signOutAction() {

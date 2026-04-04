@@ -126,13 +126,17 @@ body {
   margin: 0 auto;
   width: 100%;
   max-width: 32rem;
-  padding: 1rem;
+  padding: 1rem 1rem calc(6.5rem + env(safe-area-inset-bottom));
 }
 
 .screen-stack {
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
+}
+
+.screen-stack--spacious {
+  gap: 1rem;
 }
 
 .dark {

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
-import { isE2EMockMode } from "@/lib/e2eMock";
+import { applyMockStateCookies, getMockExercises, isE2EMockMode } from "@/lib/e2eMock";
 import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
 
 const postSchema = z.object({
@@ -31,15 +31,27 @@ export async function POST(req: NextRequest) {
   const normalizedType = parsed.data.type.trim();
 
   if (isE2EMockMode()) {
-    return jsonSuccess(
-      {
-        id: crypto.randomUUID(),
-        type: normalizedType,
-        goal: parsed.data.goal,
-        created_at: new Date().toISOString(),
-      },
-      { status: 201 }
+    const currentExercises = getMockExercises(req.cookies);
+    const duplicate = currentExercises.some(
+      (exercise) => exercise.type.toLowerCase() === normalizedType.toLowerCase()
     );
+
+    if (duplicate) {
+      return jsonError(409, "CONFLICT", "Exercise already exists");
+    }
+
+    const createdExercise = {
+      id: crypto.randomUUID(),
+      type: normalizedType,
+      goal: parsed.data.goal,
+      created_at: new Date().toISOString(),
+    };
+
+    const response = jsonSuccess(createdExercise, { status: 201 });
+    applyMockStateCookies(response, {
+      exercises: [...currentExercises, createdExercise],
+    });
+    return response;
   }
 
   const { supabase, userId } = await getAuthenticatedRouteContext(req);

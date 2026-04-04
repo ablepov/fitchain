@@ -1,5 +1,10 @@
-import type { ProfilePageData, TrainingOverview } from "@/lib/trainingData";
-import type { SessionSnapshot } from "@/lib/sessionData";
+import type {
+  ProfilePageData,
+  TrainingOverview,
+  TrainingStats,
+  WeeklyPlan,
+} from "@/lib/trainingTypes";
+import type { SessionSnapshot } from "@/lib/sessionTypes";
 
 type ApiEnvelope<T> = {
   data: T | null;
@@ -22,6 +27,14 @@ export type ExerciseApiRecord = {
   id: string;
   type: string;
   goal: number;
+  created_at?: string;
+};
+
+export type PlanApiRecord = {
+  id: string;
+  exercise_id: string;
+  weekday: number;
+  position: number;
   created_at?: string;
 };
 
@@ -64,6 +77,18 @@ export async function fetchTrainingOverview(options: {
   });
 
   return requestJson<TrainingOverview>(`/api/training/overview?${searchParams.toString()}`, {
+    method: "GET",
+  });
+}
+
+export async function fetchTrainingStats() {
+  return requestJson<TrainingStats>("/api/training/stats", {
+    method: "GET",
+  });
+}
+
+export async function fetchWeeklyPlan() {
+  return requestJson<WeeklyPlan>("/api/training/plan", {
     method: "GET",
   });
 }
@@ -112,6 +137,33 @@ export async function updateExercise(input: { id: string; type: string; goal: nu
 
 export async function deleteExercise(id: string) {
   return requestJson<{ id: string; type: string }>(`/api/exercises/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function createPlanAssignment(input: { exerciseId: string; weekday: number; position?: number }) {
+  return requestJson<PlanApiRecord>("/api/training/plan", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updatePlanAssignment(input: {
+  id: string;
+  weekday?: number;
+  position?: number;
+}) {
+  return requestJson<PlanApiRecord>(`/api/training/plan/${input.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      weekday: input.weekday,
+      position: input.position,
+    }),
+  });
+}
+
+export async function deletePlanAssignment(id: string) {
+  return requestJson<{ id: string }>(`/api/training/plan/${id}`, {
     method: "DELETE",
   });
 }

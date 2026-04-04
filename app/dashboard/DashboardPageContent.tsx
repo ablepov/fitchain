@@ -3,17 +3,18 @@ import { DashboardPageClient } from "@/app/dashboard/DashboardPageClient";
 import { getQueryClient } from "@/lib/queryClient";
 import { queryKeys } from "@/lib/queryKeys";
 import { getSessionSnapshot } from "@/lib/sessionData";
-import { getTrainingOverview } from "@/lib/trainingData";
- 
+import { getTrainingStats } from "@/lib/trainingData";
+
 export async function DashboardPageContent() {
   const queryClient = getQueryClient();
-  const [session, overview] = await Promise.all([
-    getSessionSnapshot(),
-    getTrainingOverview({ includeRecentHistory: false }),
-  ]);
+  const [session, stats] = await Promise.all([getSessionSnapshot(), getTrainingStats()]);
 
   queryClient.setQueryData(queryKeys.session, session);
-  queryClient.setQueryData(queryKeys.trainingOverview(false), overview);
+  queryClient.setQueryData(queryKeys.trainingStats, stats);
 
-  return <HydrationBoundary state={dehydrate(queryClient)}><DashboardPageClient /></HydrationBoundary>;
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <DashboardPageClient />
+    </HydrationBoundary>
+  );
 }

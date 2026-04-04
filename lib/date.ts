@@ -1,5 +1,19 @@
 const DATE_PARTS_LOCALE = "en-CA";
 const OFFSET_LOCALE = "en-US";
+const WEEKDAY_LOCALE = "en-US";
+
+const WEEKDAY_NAME_TO_INDEX: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+export const WEEKDAY_LABELS_RU = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"] as const;
+export const WEEKDAY_ORDER_MONDAY_FIRST = [1, 2, 3, 4, 5, 6, 0] as const;
 
 function getDateParts(timezone: string, date: Date) {
   return new Intl.DateTimeFormat(DATE_PARTS_LOCALE, {
@@ -41,6 +55,23 @@ function getOffsetMinutes(timezone: string, date: Date) {
   return sign * (hours * 60 + minutes);
 }
 
+function getDatePartNumbers(timezone: string, date: Date) {
+  const parts = getDateParts(timezone, date);
+
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+  };
+}
+
+function shiftDateParts(dayDelta: number, timezone: string, date: Date) {
+  const { year, month, day } = getDatePartNumbers(timezone, date);
+  const nextDate = new Date(Date.UTC(year, month - 1, day + dayDelta, 12, 0, 0, 0));
+
+  return getDatePartNumbers(timezone, nextDate);
+}
+
 function zonedTimeToUtc(
   timezone: string,
   year: number,
@@ -67,19 +98,75 @@ function zonedTimeToUtc(
   return new Date(utcMs);
 }
 
-export function getDayBoundsISO(timezone: string, date: Date = new Date()): { startISO: string; endISO: string } {
-  const parts = getDateParts(timezone, date);
-  const year = Number(parts.year);
-  const month = Number(parts.month);
-  const day = Number(parts.day);
-
-  const start = zonedTimeToUtc(timezone, year, month, day, 0, 0, 0, 0);
-  const end = zonedTimeToUtc(timezone, year, month, day, 23, 59, 59, 999);
+function getRangeBounds(
+  timezone: string,
+  start: { year: number; month: number; day: number },
+  endExclusive: { year: number; month: number; day: number }
+) {
+  const startDate = zonedTimeToUtc(timezone, start.year, start.month, start.day, 0, 0, 0, 0);
+  const endDate = zonedTimeToUtc(timezone, endExclusive.year, endExclusive.month, endExclusive.day, 0, 0, 0, 0);
 
   return {
-    startISO: start.toISOString(),
-    endISO: end.toISOString(),
+    startISO: startDate.toISOString(),
+    endISO: endDate.toISOString(),
   };
+}
+
+export function getDayBoundsISO(timezone: string, date: Date = new Date()): { startISO: string; endISO: string } {
+  const start = getDatePartNumbers(timezone, date);
+  const nextDay = shiftDateParts(1, timezone, date);
+
+  const { startISO, endISO: endExclusiveISO } = getRangeBounds(timezone, start, nextDay);
+
+  return {
+    startISO,
+    endISO: new Date(new Date(endExclusiveISO).getTime() - 1).toISOString(),
+  };
+}
+
+export function getWeekdayIndex(timezone: string, date: Date = new Date()) {
+  const weekdayName = new Intl.DateTimeFormat(WEEKDAY_LOCALE, {
+    timeZone: timezone,
+    weekday: "short",
+  }).format(date);
+
+  return WEEKDAY_NAME_TO_INDEX[weekdayName] ?? 0;
+}
+
+export function getWeekBoundsISO(timezone: string, date: Date = new Date()) {
+  const weekday = getWeekdayIndex(timezone, date);
+  const daysFromMonday = weekday === 0 ? 6 : weekday - 1;
+  const start = shiftDateParts(-daysFromMonday, timezone, date);
+  const endExclusive = shiftDateParts(7 - daysFromMonday, timezone, date);
+
+  return getRangeBounds(timezone, start, endExclusive);
+}
+
+export function getMonthBoundsISO(timezone: string, date: Date = new Date()) {
+  const { year, month } = getDatePartNumbers(timezone, date);
+  const nextMonthDate = new Date(Date.UTC(year, month, 1, 12, 0, 0, 0));
+  const nextMonth = getDatePartNumbers(timezone, nextMonthDate);
+
+  return getRangeBounds(
+    timezone,
+    {
+      year,
+      month,
+      day: 1,
+    },
+    {
+      year: nextMonth.year,
+      month: nextMonth.month,
+      day: 1,
+    }
+  );
+}
+
+export function formatDateKeyInTimezone(timezone: string, date: Date | string) {
+  const value = typeof date === "string" ? new Date(date) : date;
+  const parts = getDateParts(timezone, value);
+
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 export function formatRelativeTimeFromNow(isoString: string | null): string {

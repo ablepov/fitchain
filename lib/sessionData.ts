@@ -1,11 +1,8 @@
 import { redirect } from "next/navigation";
 import { getOptionalAppSession } from "@/lib/appSession";
+import type { SessionSnapshot } from "@/lib/sessionTypes";
 
-export type SessionSnapshot = {
-  userId: string | null;
-  email: string | null;
-  isAuthenticated: boolean;
-};
+export type { SessionSnapshot } from "@/lib/sessionTypes";
 
 export async function getSessionSnapshot(): Promise<SessionSnapshot> {
   const session = await getOptionalAppSession();

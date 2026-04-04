@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTimeFromNow } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ const BUFFER_MS = 2000;
 const TICK_MS = 50;
 const TOKEN_SIZE = 22;
 const MAX_PENDING = 18;
-const DROP_IMPACT_PROGRESS = 0.78;
+const DROP_IMPACT_PROGRESS = 0.68;
 
 type MotionPhase = "launch" | "hold" | "drop" | "removePending" | "removeCommitted";
 type CounterDirection = "up" | "down";
@@ -35,9 +35,21 @@ type TokenModel = {
   phase: MotionPhase;
   x: number;
   y: number;
+  holdPoint: Point;
+  slotIndex: number;
   from: Point;
   to: Point;
   motionKey: number;
+  motionIndex: number;
+  motionTotal: number;
+  zOrder: number;
+};
+
+type TokenSpawnPlan = {
+  id: string;
+  source: SourceKey;
+  holdPoint: Point;
+  slotIndex: number;
   motionIndex: number;
   motionTotal: number;
   zOrder: number;
@@ -162,6 +174,9 @@ export type ExerciseProgressCardProps = {
   onCommit?: (reps: number) => void | Promise<void>;
   className?: string;
   theme?: Partial<ThemeConfig>;
+  variant?: "active" | "planned";
+  actions?: ReactNode;
+  statusLabel?: string;
 };
 
 const DEFAULT_THEME: ThemeConfig = {
@@ -507,20 +522,47 @@ function getProgressPoint(total: number, goal: number, anchors: SceneAnchors): P
   };
 }
 
-function getHoldPoint(_pattern: HoldPattern, index: number, total: number, anchors: SceneAnchors): Point {
-  const maxColumns = clamp(Math.floor((anchors.holdWidth + 6) / (TOKEN_SIZE + 6)), 1, 10);
+function buildCenterOutOrder(count: number) {
+  const leftCenter = Math.floor((count - 1) / 2);
+  const rightCenter = Math.ceil((count - 1) / 2);
+  const order: number[] = [];
+
+  for (let offset = 0; order.length < count; offset += 1) {
+    const left = leftCenter - offset;
+    const right = rightCenter + offset;
+
+    if (left === right) {
+      if (left >= 0 && left < count) {
+        order.push(left);
+      }
+      continue;
+    }
+
+    if (left >= 0) {
+      order.push(left);
+    }
+
+    if (right < count) {
+      order.push(right);
+    }
+  }
+
+  return order;
+}
+
+function getHoldPoint(_pattern: HoldPattern, index: number, anchors: SceneAnchors): Point {
   const gapX = 6;
   const gapY = 8;
+  const maxColumns = clamp(Math.floor((anchors.holdWidth + gapX) / (TOKEN_SIZE + gapX)), 1, MAX_PENDING);
+  const totalRows = Math.max(1, Math.ceil(MAX_PENDING / maxColumns));
+  const gridWidth = maxColumns * TOKEN_SIZE + Math.max(0, maxColumns - 1) * gapX;
+  const gridHeight = totalRows * TOKEN_SIZE + Math.max(0, totalRows - 1) * gapY;
   const rowIndex = Math.floor(index / maxColumns);
-  const rowOffset = index % maxColumns;
-  const totalRows = Math.max(1, Math.ceil(total / maxColumns));
-  const rowCount =
-    rowIndex === totalRows - 1 ? total - rowIndex * maxColumns || Math.min(total, maxColumns) : Math.min(total, maxColumns);
-  const rowWidth = rowCount * TOKEN_SIZE + Math.max(0, rowCount - 1) * gapX;
-  const blockHeight = totalRows * TOKEN_SIZE + Math.max(0, totalRows - 1) * gapY;
-  const startX = anchors.holdLeft + (anchors.holdWidth - rowWidth) / 2;
-  const startY = anchors.holdTop + (anchors.holdHeight - blockHeight) / 2;
-  const x = startX + rowOffset * (TOKEN_SIZE + gapX);
+  const columnOrder = buildCenterOutOrder(maxColumns);
+  const columnIndex = columnOrder[index % maxColumns] ?? (index % maxColumns);
+  const startX = anchors.holdLeft + (anchors.holdWidth - gridWidth) / 2;
+  const startY = anchors.holdTop + (anchors.holdHeight - gridHeight) / 2;
+  const x = startX + columnIndex * (TOKEN_SIZE + gapX);
   const y = startY + rowIndex * (TOKEN_SIZE + gapY);
 
   return {
@@ -619,7 +661,18 @@ function AnimatedToken({
     return () => {
       animation.cancel();
     };
-  }, [metrics, onMotionComplete, token.from, token.id, token.motionIndex, token.motionKey, token.motionTotal, token.phase, token.to]);
+  }, [
+    metrics.height,
+    metrics.width,
+    onMotionComplete,
+    token.from,
+    token.id,
+    token.motionIndex,
+    token.motionKey,
+    token.motionTotal,
+    token.phase,
+    token.to,
+  ]);
 
   return (
     <span
@@ -647,6 +700,9 @@ export function ExerciseProgressCard({
   onCommit,
   className,
   theme,
+  variant = "active",
+  actions,
+  statusLabel,
 }: ExerciseProgressCardProps) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const holdZoneRef = useRef<HTMLDivElement | null>(null);
@@ -676,11 +732,14 @@ export function ExerciseProgressCard({
   const pendingIdsRef = useRef<string[]>([]);
   const commitLockRef = useRef(false);
   const commitRemainingRef = useRef(0);
+  const pendingPlansRef = useRef(new Map<string, TokenSpawnPlan>());
+  const tokensRef = useRef<TokenModel[]>([]);
 
   const buttonValues = useMemo(() => deriveSmartButtons(recentReps), [recentReps]);
   const chartValues = useMemo(() => buildChartSeries(chart, recentReps), [chart, recentReps]);
   const lastSetLabel = useMemo(() => formatLastSetLabel(lastSetTime), [lastSetTime]);
   const palette = useMemo(() => ({ ...DEFAULT_THEME, ...theme }), [theme]);
+  const isActiveVariant = variant === "active";
   const actualProgress = clamp((committedTotal / target) * 100, 0, 100);
   const projectedProgress = clamp(((committedTotal + pendingIds.length) / target) * 100, 0, 100);
   const remaining = Math.max(0, target - committedTotal);
@@ -688,6 +747,10 @@ export function ExerciseProgressCard({
   useEffect(() => {
     setCommittedTotal(current);
   }, [current]);
+
+  useEffect(() => {
+    tokensRef.current = tokens;
+  }, [tokens]);
 
   const clearQueuedTimeouts = useCallback(() => {
     for (const timeoutId of timeoutIdsRef.current) {
@@ -808,19 +871,24 @@ export function ExerciseProgressCard({
       return;
     }
 
+    pendingPlansRef.current = new Map(
+      [...pendingPlansRef.current.entries()].map(([id, plan]) => [
+        id,
+        {
+          ...plan,
+          holdPoint: getHoldPoint(MOTION_CONFIG.holdPattern, plan.slotIndex, anchors),
+        },
+      ])
+    );
+
     setTokens((current) =>
       current.map((token) => {
         if (token.phase !== "hold") {
           return token;
         }
 
-        const nextIndex = pendingIds.indexOf(token.id);
-        if (nextIndex === -1) {
-          return token;
-        }
-
-        const nextPoint = getHoldPoint(MOTION_CONFIG.holdPattern, nextIndex, pendingIds.length, anchors);
-        if (Math.abs(nextPoint.x - token.x) < 0.5 && Math.abs(nextPoint.y - token.y) < 0.5) {
+        const nextPoint = getHoldPoint(MOTION_CONFIG.holdPattern, token.slotIndex, anchors);
+        if (Math.abs(nextPoint.x - token.holdPoint.x) < 0.5 && Math.abs(nextPoint.y - token.holdPoint.y) < 0.5) {
           return token;
         }
 
@@ -828,12 +896,13 @@ export function ExerciseProgressCard({
           ...token,
           x: nextPoint.x,
           y: nextPoint.y,
+          holdPoint: nextPoint,
           from: nextPoint,
           to: nextPoint,
         };
       })
     );
-  }, [layoutTick, pendingIds]);
+  }, [layoutTick]);
 
   const pulseCounter = useCallback((direction: CounterDirection) => {
     setCounterDirection(direction);
@@ -892,7 +961,8 @@ export function ExerciseProgressCard({
 
   const startCommit = useCallback(() => {
     const anchors = anchorsRef.current;
-    const commitIds = [...pendingIdsRef.current];
+    const visibleIds = new Set(tokensRef.current.map((token) => token.id));
+    const commitIds = pendingIdsRef.current.filter((id) => visibleIds.has(id));
 
     if (commitLockRef.current || commitIds.length === 0 || !anchors) {
       return;
@@ -902,6 +972,7 @@ export function ExerciseProgressCard({
     commitRemainingRef.current = commitIds.length;
     setIsCommitting(true);
     pendingIdsRef.current = [];
+    pendingPlansRef.current.clear();
     setPendingIds([]);
     timerDeadlineRef.current = null;
     setTimeLeftMs(0);
@@ -925,7 +996,9 @@ export function ExerciseProgressCard({
             return {
               ...token,
               phase: "drop",
-              from: { x: token.x, y: token.y },
+              x: token.holdPoint.x,
+              y: token.holdPoint.y,
+              from: token.holdPoint,
               to: nextTarget,
               motionKey: token.motionKey + 1,
               motionIndex: index,
@@ -983,40 +1056,44 @@ export function ExerciseProgressCard({
   }, []);
 
   const spawnToken = useCallback(
-    (source: SourceKey) => {
+    (plan: TokenSpawnPlan) => {
       const anchors = anchorsRef.current;
       if (!anchors) {
         return;
       }
 
-      const id = makeTokenId();
-      const pendingCount = pendingIdsRef.current.length;
-      const nextTotal = pendingCount + 1;
-      const holdPoint = getHoldPoint(MOTION_CONFIG.holdPattern, pendingCount, nextTotal, anchors);
-      const startPoint = anchors[source];
-      const nextPendingIds = [...pendingIdsRef.current, id];
+      if (!pendingPlansRef.current.has(plan.id) || !pendingIdsRef.current.includes(plan.id)) {
+        return;
+      }
 
-      pendingIdsRef.current = nextPendingIds;
+      pendingPlansRef.current.delete(plan.id);
+      const startPoint = anchors[plan.source];
 
-      setTokens((current) => [
-        ...current,
-        {
-          id,
-          phase: "launch",
-          x: startPoint.x,
-          y: startPoint.y,
-          from: startPoint,
-          to: holdPoint,
-          motionKey: 0,
-          motionIndex: pendingCount,
-          motionTotal: nextTotal,
-          zOrder: sequenceRef.current,
-        },
-      ]);
-      setPendingIds(nextPendingIds);
-      resetTimer();
+      setTokens((current) => {
+        if (current.some((token) => token.id === plan.id)) {
+          return current;
+        }
+
+        return [
+          ...current,
+          {
+            id: plan.id,
+            phase: "launch",
+            x: startPoint.x,
+            y: startPoint.y,
+            holdPoint: plan.holdPoint,
+            slotIndex: plan.slotIndex,
+            from: startPoint,
+            to: plan.holdPoint,
+            motionKey: 0,
+            motionIndex: plan.motionIndex,
+            motionTotal: plan.motionTotal,
+            zOrder: plan.zOrder,
+          },
+        ];
+      });
     },
-    [makeTokenId, resetTimer]
+    []
   );
 
   const handleAdd = useCallback(
@@ -1031,14 +1108,41 @@ export function ExerciseProgressCard({
         return;
       }
 
-      for (let index = 0; index < count; index += 1) {
-        const delay = index * MOTION_CONFIG.spawnGap;
-        schedule(() => {
-          spawnToken(source);
-        }, delay);
+      const anchors = anchorsRef.current;
+      if (!anchors) {
+        return;
       }
+
+      const baseSlotIndex = pendingIdsRef.current.length;
+      const nextPlans: TokenSpawnPlan[] = [];
+
+      for (let index = 0; index < count; index += 1) {
+        const id = makeTokenId();
+        nextPlans.push({
+          id,
+          source,
+          holdPoint: getHoldPoint(MOTION_CONFIG.holdPattern, baseSlotIndex + index, anchors),
+          slotIndex: baseSlotIndex + index,
+          motionIndex: index,
+          motionTotal: count,
+          zOrder: sequenceRef.current,
+        });
+      }
+
+      const nextPendingIds = [...pendingIdsRef.current, ...nextPlans.map((plan) => plan.id)];
+      pendingIdsRef.current = nextPendingIds;
+      setPendingIds(nextPendingIds);
+
+      nextPlans.forEach((plan) => {
+        pendingPlansRef.current.set(plan.id, plan);
+        schedule(() => {
+          spawnToken(plan);
+        }, plan.motionIndex * MOTION_CONFIG.spawnGap);
+      });
+
+      resetTimer();
     },
-    [isCommitting, isReady, schedule, spawnToken]
+    [isCommitting, isReady, makeTokenId, resetTimer, schedule, spawnToken]
   );
 
   const handleMinus = useCallback(() => {
@@ -1056,6 +1160,20 @@ export function ExerciseProgressCard({
       const nextPendingIds = pendingIdsRef.current.slice(0, -1);
       pendingIdsRef.current = nextPendingIds;
       setPendingIds(nextPendingIds);
+      const queuedPlan = pendingPlansRef.current.get(pendingId);
+      if (queuedPlan) {
+        pendingPlansRef.current.delete(pendingId);
+
+        if (nextPendingIds.length === 0) {
+          timerDeadlineRef.current = null;
+          setTimeLeftMs(0);
+        } else {
+          resetTimer();
+        }
+
+        return;
+      }
+
       setTokens((current) =>
         current.map((token) => {
           if (token.id !== pendingId) {
@@ -1065,7 +1183,9 @@ export function ExerciseProgressCard({
           return {
             ...token,
             phase: "removePending",
-            from: { x: token.x, y: token.y },
+            x: token.holdPoint.x,
+            y: token.holdPoint.y,
+            from: token.holdPoint,
             to: anchors.minus,
             motionKey: token.motionKey + 1,
             motionIndex: 0,
@@ -1074,7 +1194,7 @@ export function ExerciseProgressCard({
         })
       );
 
-      if (pendingIdsRef.current.length === 1) {
+      if (nextPendingIds.length === 0) {
         timerDeadlineRef.current = null;
         setTimeLeftMs(0);
       } else {
@@ -1098,6 +1218,8 @@ export function ExerciseProgressCard({
         phase: "removeCommitted",
         x: startPoint.x,
         y: startPoint.y,
+        holdPoint: startPoint,
+        slotIndex: -1,
         from: startPoint,
         to: anchors.minus,
         motionKey: 0,
@@ -1111,26 +1233,19 @@ export function ExerciseProgressCard({
   const handleMotionComplete = useCallback(
     (id: string, phase: MotionPhase) => {
       if (phase === "launch") {
-        const anchors = anchorsRef.current;
-        const nextIndex = pendingIdsRef.current.indexOf(id);
         setTokens((current) =>
           current.map((token) => {
             if (token.id !== id) {
               return token;
             }
 
-            const holdPoint =
-              anchors && nextIndex !== -1
-                ? getHoldPoint(MOTION_CONFIG.holdPattern, nextIndex, pendingIdsRef.current.length, anchors)
-                : token.to;
-
             return {
               ...token,
               phase: "hold",
-              x: holdPoint.x,
-              y: holdPoint.y,
-              from: holdPoint,
-              to: holdPoint,
+              x: token.holdPoint.x,
+              y: token.holdPoint.y,
+              from: token.holdPoint,
+              to: token.holdPoint,
               motionIndex: 0,
               motionTotal: 1,
             };
@@ -1192,15 +1307,22 @@ export function ExerciseProgressCard({
   return (
     <div className={cn(styles.shell, className)}>
       <article className={styles.card} style={themeStyle}>
-        <div ref={sceneRef} className={styles.scene}>
+        <div ref={sceneRef} className={cn(styles.scene, !isActiveVariant && styles.scenePlanned)}>
           <BackgroundChart values={chartValues} />
 
           <div className={styles.header}>
             <div className={styles.titleRow}>
               <h1 className={styles.exerciseName}>{exercise}</h1>
-              <div className={styles.remainingChip}>
-                <span>Осталось</span>
-                <strong>{remaining}</strong>
+              <div className={styles.titleMeta}>
+                {actions ? <div className={styles.actionSlot}>{actions}</div> : null}
+                {isActiveVariant ? (
+                  <div className={styles.remainingChip}>
+                    <span>Осталось</span>
+                    <strong>{remaining}</strong>
+                  </div>
+                ) : statusLabel ? (
+                  <div className={styles.statusPill}>{statusLabel}</div>
+                ) : null}
               </div>
             </div>
 
@@ -1217,66 +1339,75 @@ export function ExerciseProgressCard({
             </div>
           </div>
 
-          <div ref={holdZoneRef} className={styles.holdZone} />
+          {isActiveVariant ? (
+            <>
+              <div ref={holdZoneRef} className={styles.holdZone} />
 
-          {tokens.map((token) => (
-            <AnimatedToken
-              key={token.id}
-              token={token}
-              metrics={anchorsRef.current?.metrics ?? { width: 320, height: 420 }}
-              onMotionComplete={handleMotionComplete}
-            />
-          ))}
+              {tokens.map((token) => (
+                <AnimatedToken
+                  key={token.id}
+                  token={token}
+                  metrics={anchorsRef.current?.metrics ?? { width: 320, height: 420 }}
+                  onMotionComplete={handleMotionComplete}
+                />
+              ))}
 
-          <div className={styles.controls}>
-            <Button
-              ref={minusRef}
-              variant="outline"
-              className={cn(styles.controlButton, styles.minusButton)}
-              onClick={handleMinus}
-              disabled={!isReady || isCommitting || (pendingIds.length === 0 && committedTotal === 0)}
-            >
-              -1
-            </Button>
-            <Button
-              ref={smartOneRef}
-              className={cn(styles.controlButton, styles.smartButton)}
-              style={buttonStyle}
-              onClick={() => handleAdd(buttonValues[0], "smart1")}
-              disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
-            >
-              +{buttonValues[0]}
-            </Button>
-            <Button
-              ref={smartTwoRef}
-              className={cn(styles.controlButton, styles.smartButton)}
-              style={buttonStyle}
-              onClick={() => handleAdd(buttonValues[1], "smart2")}
-              disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
-            >
-              +{buttonValues[1]}
-            </Button>
-            <Button
-              ref={smartThreeRef}
-              className={cn(styles.controlButton, styles.smartButton)}
-              style={buttonStyle}
-              onClick={() => handleAdd(buttonValues[2], "smart3")}
-              disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
-            >
-              +{buttonValues[2]}
-            </Button>
-            <Button
-              ref={plusOneRef}
-              variant="secondary"
-              className={cn(styles.controlButton, styles.plusOneButton)}
-              onClick={() => handleAdd(1, "plus1")}
-              disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
-            >
-              +1
-            </Button>
+              <div className={styles.controls}>
+                <Button
+                  ref={minusRef}
+                  variant="outline"
+                  className={cn(styles.controlButton, styles.minusButton)}
+                  onClick={handleMinus}
+                  disabled={!isReady || isCommitting || (pendingIds.length === 0 && committedTotal === 0)}
+                >
+                  -1
+                </Button>
+                <Button
+                  ref={smartOneRef}
+                  className={cn(styles.controlButton, styles.smartButton)}
+                  style={buttonStyle}
+                  onClick={() => handleAdd(buttonValues[0], "smart1")}
+                  disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
+                >
+                  +{buttonValues[0]}
+                </Button>
+                <Button
+                  ref={smartTwoRef}
+                  className={cn(styles.controlButton, styles.smartButton)}
+                  style={buttonStyle}
+                  onClick={() => handleAdd(buttonValues[1], "smart2")}
+                  disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
+                >
+                  +{buttonValues[1]}
+                </Button>
+                <Button
+                  ref={smartThreeRef}
+                  className={cn(styles.controlButton, styles.smartButton)}
+                  style={buttonStyle}
+                  onClick={() => handleAdd(buttonValues[2], "smart3")}
+                  disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
+                >
+                  +{buttonValues[2]}
+                </Button>
+                <Button
+                  ref={plusOneRef}
+                  variant="secondary"
+                  className={cn(styles.controlButton, styles.plusOneButton)}
+                  onClick={() => handleAdd(1, "plus1")}
+                  disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
+                >
+                  +1
+                </Button>
 
-            <div className={styles.lastSet}>{lastSetLabel}</div>
-          </div>
+                <div className={styles.lastSet}>{lastSetLabel}</div>
+              </div>
+            </>
+          ) : (
+            <div className={styles.plannedFooter}>
+              <div className={styles.plannedCopy}>{statusLabel ?? "Запланировано"}</div>
+              <div className={styles.lastSet}>{lastSetLabel}</div>
+            </div>
+          )}
         </div>
       </article>
     </div>
