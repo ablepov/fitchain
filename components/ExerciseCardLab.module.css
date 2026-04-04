@@ -1,7 +1,7 @@
 .shell {
   margin: 0 auto;
   width: 100%;
-  max-width: 36rem;
+  max-width: 34rem;
   padding-bottom: 2rem;
 }
 
@@ -15,15 +15,11 @@
   --scene-start: rgba(7, 20, 31, 0.98);
   --scene-end: rgba(3, 9, 16, 0.98);
   position: relative;
-  display: grid;
-  gap: 0.95rem;
-  min-height: 44rem;
   overflow: hidden;
-  border-radius: 2.25rem;
+  border-radius: 2.2rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     radial-gradient(circle at top left, var(--card-accent-soft), transparent 28%),
-    radial-gradient(circle at 86% 8%, rgba(255, 255, 255, 0.08), transparent 20%),
     linear-gradient(160deg, var(--card-surface-start), var(--card-surface-end));
   padding: 0.95rem;
   box-shadow:
@@ -44,13 +40,12 @@
 
 .scene {
   position: relative;
-  min-height: 31rem;
+  min-height: 34rem;
   overflow: hidden;
-  border-radius: 1.95rem 1.95rem 1.35rem 1.35rem;
+  border-radius: 1.95rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
     radial-gradient(circle at 18% 12%, var(--card-glow), transparent 28%),
-    radial-gradient(circle at 82% 16%, var(--card-accent-soft), transparent 22%),
     linear-gradient(180deg, var(--scene-start), var(--scene-end));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -64,30 +59,17 @@
   inset: 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%),
-    radial-gradient(circle at center, transparent 44%, rgba(0, 0, 0, 0.26));
-  pointer-events: none;
-  z-index: 0;
-}
-
-.scene::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 34px, 34px 100%;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 82%);
+    radial-gradient(circle at center, transparent 44%, rgba(0, 0, 0, 0.22));
   pointer-events: none;
   z-index: 0;
 }
 
 .sceneChart {
   position: absolute;
-  inset: 6rem 0 8.75rem;
+  inset: 0;
   z-index: 0;
   color: var(--card-accent);
-  opacity: 0.34;
+  opacity: 0.24;
 }
 
 .sceneChartSvg {
@@ -95,168 +77,136 @@
   height: 100%;
 }
 
-.sceneChartAxis {
-  stroke: rgba(255, 255, 255, 0.08);
-  stroke-width: 1;
-}
-
 .sceneChartPath {
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.2;
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: 0.42;
+  opacity: 0.55;
 }
 
-.sceneChartDot {
-  fill: currentColor;
-  opacity: 0.38;
-}
-
-.progressTrack {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 4px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  z-index: 5;
-}
-
-.progressFill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--card-accent), var(--card-accent-strong));
-  box-shadow: 0 0 22px var(--card-glow);
-  transition: width 80ms linear, opacity 180ms ease;
-}
-
-.progressCommitting {
-  animation: commitPulse 560ms ease-in-out infinite alternate;
-}
-
-.headerOverlay,
-.goalOverlay {
-  position: absolute;
+.header {
+  position: relative;
   z-index: 4;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
-    rgba(8, 8, 10, 0.66);
-  backdrop-filter: blur(18px);
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0;
 }
 
-.headerOverlay {
-  inset: 1rem auto auto 1rem;
-  width: min(15.6rem, calc(100% - 10.8rem));
-  border-radius: 1.4rem;
-  padding: 0.9rem 1rem 1rem;
-}
-
-.goalOverlay {
-  inset: 1rem 1rem auto auto;
-  width: 8.6rem;
-  border-radius: 1.45rem;
-  padding: 0.9rem 0.9rem 1rem;
-}
-
-.cardBadge {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(8, 8, 10, 0.72);
-  color: rgba(255, 255, 255, 0.74);
+.titleRow {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.9rem;
 }
 
 .exerciseName {
-  margin-top: 0.75rem;
-  font-size: clamp(1.65rem, 5vw, 2.15rem);
+  max-width: 12rem;
+  font-size: clamp(2rem, 6vw, 2.7rem);
   font-weight: 800;
-  line-height: 0.98;
-  letter-spacing: -0.06em;
-  color: rgba(250, 250, 250, 0.98);
-}
-
-.exerciseCluster {
-  margin-top: 0.45rem;
-  font-size: 0.82rem;
-  line-height: 1.4;
-  color: rgba(228, 228, 231, 0.7);
-}
-
-.goalLabel {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.48);
-}
-
-.goalTarget {
-  margin-top: 0.25rem;
-  font-size: 2.6rem;
-  font-weight: 900;
-  line-height: 0.92;
+  line-height: 0.94;
   letter-spacing: -0.08em;
   color: rgba(250, 250, 250, 0.98);
 }
 
-.goalCurrent {
-  margin-top: 0.5rem;
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: rgba(250, 250, 250, 0.9);
+.remainingChip {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: end;
+  padding-top: 0.28rem;
 }
 
-.goalCurrent span {
-  color: rgba(255, 255, 255, 0.54);
+.remainingChip span {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
 }
 
-.goalTrack {
+.remainingChip strong {
+  font-size: 1.05rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: rgba(250, 250, 250, 0.72);
+}
+
+.progressValue {
+  display: flex;
+  align-items: end;
+  gap: 0.4rem;
+  text-shadow: 0 16px 34px rgba(0, 0, 0, 0.35);
+}
+
+.progressDone {
+  font-size: clamp(3.4rem, 12vw, 5.2rem);
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.1em;
+  color: rgba(248, 250, 252, 0.99);
+}
+
+.progressDivider {
+  padding-bottom: 0.55rem;
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.44);
+}
+
+.progressGoal {
+  padding-bottom: 0.6rem;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.progressBar {
   position: relative;
-  height: 0.45rem;
-  margin-top: 0.7rem;
-  overflow: hidden;
+  height: 0.7rem;
+  overflow: visible;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
 }
 
-.goalProjectedFill,
-.goalActualFill {
+.progressProjectedFill,
+.progressActualFill {
   position: absolute;
   inset: 0 auto 0 0;
   height: 100%;
   border-radius: inherit;
+  transition: width 180ms ease;
 }
 
-.goalProjectedFill {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), var(--card-accent-soft));
-  opacity: 0.75;
+.progressProjectedFill {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), var(--card-accent-soft));
+  opacity: 0.55;
 }
 
-.goalActualFill {
+.progressActualFill {
   background: linear-gradient(90deg, var(--card-accent), var(--card-accent-strong));
   box-shadow: 0 0 24px -8px var(--card-glow);
 }
 
-.goalMeta {
-  margin-top: 0.55rem;
-  font-size: 0.74rem;
-  line-height: 1.4;
-  color: rgba(235, 235, 238, 0.68);
+.progressImpactDot {
+  position: absolute;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: var(--card-accent);
+  box-shadow:
+    0 0 0 6px rgba(116, 216, 255, 0.14),
+    0 0 20px -4px var(--card-glow);
+  transform: translate(-50%, -50%);
 }
 
 .holdZone {
   position: absolute;
-  inset: 6.1rem 1rem auto;
-  height: 6.1rem;
-  border-radius: 999px;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
-    radial-gradient(circle at center, var(--card-accent-soft), transparent 70%);
-  box-shadow:
-    inset 0 -20px 44px -34px rgba(0, 0, 0, 0.9),
-    inset 0 14px 24px -22px rgba(255, 255, 255, 0.12);
+  inset: 8.9rem 1rem auto;
+  height: 5.8rem;
   pointer-events: none;
   z-index: 1;
 }
@@ -264,228 +214,45 @@
 .holdZone::after {
   content: "";
   position: absolute;
-  inset: auto 12% 0.65rem;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
-}
-
-.centerpiece {
-  position: absolute;
-  left: 50%;
-  top: 54%;
-  z-index: 2;
-  display: grid;
-  justify-items: center;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  pointer-events: none;
-}
-
-.centerAura {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 10.5rem;
-  height: 10.5rem;
-  transform: translate(-50%, -50%);
+  inset: 0;
   border-radius: 999px;
-  background: radial-gradient(circle, var(--card-glow), transparent 68%);
-  filter: blur(18px);
-  opacity: 0.9;
+  background: radial-gradient(circle at center, rgba(116, 216, 255, 0.08), transparent 68%);
 }
 
-.centerKicker {
-  position: relative;
-  z-index: 1;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.46);
-}
-
-.centerTotal {
-  position: relative;
-  z-index: 1;
-  min-width: 6.8rem;
-  margin-top: 0.1rem;
-  font-size: clamp(3.8rem, 11vw, 5.4rem);
-  font-variant-numeric: tabular-nums;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.09em;
-  color: rgba(248, 250, 252, 0.98);
-  text-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.45),
-    0 0 26px var(--card-glow);
-  filter:
-    drop-shadow(0 16px 34px rgba(0, 0, 0, 0.5))
-    drop-shadow(0 0 24px var(--card-glow));
-  animation: centerPulse 5.4s cubic-bezier(0.37, 0, 0.22, 1) infinite;
-}
-
-.stageStatus {
+.controls {
   position: absolute;
-  inset: auto 0.9rem 8.15rem;
+  inset: auto 1rem 1rem;
   z-index: 4;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
+  gap: 0.7rem;
 }
 
-.statusPill {
+.addButtons {
   display: grid;
-  gap: 0.14rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(8, 8, 10, 0.58);
-  padding: 0.55rem 0.7rem;
-  backdrop-filter: blur(12px);
-}
-
-.statusPill span {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.42);
-}
-
-.statusPill strong {
-  font-size: 0.98rem;
-  line-height: 1;
-  color: rgba(250, 250, 250, 0.92);
-}
-
-.statusPill em {
-  font-style: normal;
-  font-size: 0.66rem;
-  line-height: 1.25;
-  color: rgba(255, 255, 255, 0.56);
-}
-
-.buttonDock {
-  position: absolute;
-  inset: auto 0.9rem 0.9rem;
-  z-index: 4;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
 .controlButton {
-  height: 3.05rem;
-  border-radius: 1.18rem;
-  font-size: 0.96rem;
+  height: 3.35rem;
+  border-radius: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
 .minusButton {
+  width: 5.5rem;
   border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(8, 8, 8, 0.72);
+  background: rgba(8, 8, 8, 0.64);
   color: rgba(255, 255, 255, 0.86);
 }
 
 .plusButton {
   border-color: transparent;
-  color: rgba(10, 10, 10, 0.92);
+  color: rgba(10, 10, 10, 0.94);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.26),
     0 16px 34px -22px var(--card-glow);
-}
-
-.sheet {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  gap: 0.85rem;
-  margin-top: -1.05rem;
-  border-radius: 1.6rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
-    rgba(8, 8, 10, 0.7);
-  padding: 0.95rem;
-  backdrop-filter: blur(18px);
-}
-
-.metricRow {
-  display: grid;
-  gap: 0.6rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.metricCard {
-  border-radius: 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background:
-    linear-gradient(180deg, rgba(18, 18, 18, 0.82), rgba(10, 10, 10, 0.92));
-  padding: 0.78rem 0.82rem;
-}
-
-.metricCard span {
-  display: block;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.42);
-}
-
-.metricCard strong {
-  display: block;
-  margin-top: 0.35rem;
-  font-size: 1rem;
-  line-height: 1.25;
-  color: rgba(250, 250, 250, 0.9);
-}
-
-.sheetFooter {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.dayProgress {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.dayProgress span {
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.44);
-}
-
-.dayProgress strong {
-  font-size: 1rem;
-  line-height: 1;
-  color: rgba(250, 250, 250, 0.9);
-}
-
-.dayTrack {
-  position: relative;
-  height: 0.54rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.dayTrackFill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--card-accent), var(--card-accent-strong));
-  box-shadow: 0 0 24px -8px var(--card-glow);
-}
-
-.resetButton {
-  justify-self: start;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.88);
 }
 
 .tokenShell {
@@ -494,10 +261,9 @@
   top: 0;
   width: 30px;
   height: 30px;
-  transition: transform 440ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform, opacity, filter;
   pointer-events: none;
-  z-index: 4;
+  z-index: 3;
 }
 
 .tokenBody {
@@ -538,19 +304,6 @@
 
 .floatFlutter {
   animation-name: floatFlutter;
-}
-
-@keyframes centerPulse {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1) rotate(-2deg);
-  }
-  32% {
-    transform: translate3d(0, -10px, 0) scale(1.03) rotate(2deg);
-  }
-  64% {
-    transform: translate3d(0, 6px, 0) scale(0.98) rotate(-1deg);
-  }
 }
 
 @keyframes floatDrift {
@@ -621,64 +374,49 @@
   }
 }
 
-@keyframes commitPulse {
-  from {
-    opacity: 0.78;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @media (max-width: 640px) {
   .card {
-    min-height: 42rem;
-    border-radius: 1.9rem;
+    border-radius: 1.95rem;
     padding: 0.8rem;
   }
 
   .scene {
-    min-height: 29rem;
+    min-height: 32rem;
   }
 
-  .headerOverlay {
-    width: min(14.5rem, calc(100% - 10rem));
-    padding: 0.85rem 0.9rem 0.95rem;
+  .progressDone {
+    font-size: 4.4rem;
   }
 
-  .goalOverlay {
-    width: 7.8rem;
-    padding: 0.78rem 0.78rem 0.9rem;
-  }
-
-  .stageStatus {
-    inset: auto 0.8rem 8rem;
-    gap: 0.45rem;
-  }
-
-  .statusPill {
-    padding: 0.5rem 0.55rem;
-  }
-
-  .metricRow {
-    grid-template-columns: 1fr;
+  .progressGoal {
+    padding-bottom: 0.52rem;
   }
 }
 
 @media (max-width: 420px) {
-  .headerOverlay {
-    width: calc(100% - 9.4rem);
+  .titleRow {
+    gap: 0.65rem;
   }
 
-  .goalOverlay {
-    width: 7rem;
+  .exerciseName {
+    max-width: 10.5rem;
+    font-size: 1.8rem;
   }
 
-  .goalTarget {
-    font-size: 2.2rem;
+  .remainingChip {
+    min-width: 5.8rem;
+    padding: 0.65rem 0.72rem;
   }
 
-  .stageStatus {
-    inset: auto 0.8rem 7.8rem;
+  .progressDone {
+    font-size: 4rem;
+  }
+
+  .controls {
+    inset: auto 0.85rem 0.85rem;
+  }
+
+  .addButtons {
+    gap: 0.55rem;
   }
 }

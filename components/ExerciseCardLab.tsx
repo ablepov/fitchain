@@ -1,7 +1,6 @@
 "use client";
 
 import { type CSSProperties, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import styles from "./ExerciseCardLab.module.css";
@@ -133,6 +132,21 @@ type SceneAnchors = {
 
 type SourceKey = "plus1" | "plus3" | "plus5";
 
+const CARD = {
+  exercise: "Отжимания",
+  current: 36,
+  target: 100,
+  chart: [12, 16, 19, 22, 26, 30, 36],
+  accent: "#74d8ff",
+  accentStrong: "#def7ff",
+  accentSoft: "rgba(116, 216, 255, 0.18)",
+  glow: "rgba(116, 216, 255, 0.34)",
+  surfaceStart: "rgba(8, 22, 35, 0.98)",
+  surfaceEnd: "rgba(3, 7, 12, 0.98)",
+  sceneStart: "rgba(7, 20, 31, 0.98)",
+  sceneEnd: "rgba(3, 9, 16, 0.98)",
+};
+
 const MOTION_CONFIG: MotionConfig = {
   holdPattern: "stack",
   floatPreset: "bob",
@@ -200,28 +214,6 @@ const MOTION_CONFIG: MotionConfig = {
     shiftY: 7,
     shiftX: 3,
   },
-};
-
-const CARD = {
-  badge: "03 / poster overlay",
-  exercise: "Отжимания",
-  cluster: "Грудь · трицепс · корпус",
-  current: 36,
-  target: 100,
-  chart: [12, 16, 19, 22, 26, 30, 36],
-  metrics: [
-    { label: "Сеты", value: "3 / 5" },
-    { label: "Отдых", value: "45с" },
-    { label: "Темп", value: "2-1-2" },
-  ],
-  accent: "#74d8ff",
-  accentStrong: "#def7ff",
-  accentSoft: "rgba(116, 216, 255, 0.18)",
-  glow: "rgba(116, 216, 255, 0.34)",
-  surfaceStart: "rgba(8, 22, 35, 0.98)",
-  surfaceEnd: "rgba(3, 7, 12, 0.98)",
-  sceneStart: "rgba(7, 20, 31, 0.98)",
-  sceneEnd: "rgba(3, 9, 16, 0.98)",
 };
 
 const FLOAT_CLASS: Record<FloatPreset, string> = {
@@ -435,8 +427,8 @@ function getHoldPoint(pattern: HoldPattern, index: number, total: number, metric
   const safeTotal = Math.max(total, 1);
   const t = safeTotal === 1 ? 0.5 : index / Math.max(safeTotal - 1, 1);
   const centerX = metrics.width / 2 - TOKEN_SIZE / 2;
-  const top = 72;
-  const spread = Math.min(metrics.width * 0.28, 108);
+  const top = 112;
+  const spread = Math.min(metrics.width * 0.28, 112);
 
   let x = centerX;
   let y = top;
@@ -472,49 +464,36 @@ function getHoldPoint(pattern: HoldPattern, index: number, total: number, metric
 
   return {
     x: clamp(x, 14, metrics.width - TOKEN_SIZE - 14),
-    y: clamp(y, 58, 150),
+    y: clamp(y, 96, 184),
   };
 }
 
 function BackgroundChart({ values }: { values: number[] }) {
   const gradientId = useId();
   const width = 240;
-  const height = 132;
-  const pad = 12;
+  const height = 220;
   const max = Math.max(...values, 1);
-  const innerHeight = height - pad * 2;
   const points = values.map((value, index) => {
-    const x = pad + (index * (width - pad * 2)) / Math.max(values.length - 1, 1);
-    const y = pad + innerHeight - (value / max) * innerHeight;
+    const x = (index * width) / Math.max(values.length - 1, 1);
+    const y = height - (value / max) * (height * 0.9);
 
     return { x, y };
   });
+
   const pathData = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
-  const areaPoints = `${pad},${height - pad} ${points.map((point) => `${point.x},${point.y}`).join(" ")} ${
-    points[points.length - 1]?.x ?? width - pad
-  },${height - pad}`;
+  const areaPoints = `0,${height} ${points.map((point) => `${point.x},${point.y}`).join(" ")} ${width},${height}`;
 
   return (
     <div className={styles.sceneChart} aria-hidden="true">
       <svg className={styles.sceneChartSvg} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="currentColor" stopOpacity="0.22" />
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.18" />
             <stop offset="100%" stopColor="currentColor" stopOpacity="0.01" />
           </linearGradient>
         </defs>
-        <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} className={styles.sceneChartAxis} />
         <polygon points={areaPoints} fill={`url(#${gradientId})`} />
         <path d={pathData} className={styles.sceneChartPath} />
-        {points.map((point, index) => (
-          <circle
-            key={`${gradientId}-${point.x}-${point.y}-${index}`}
-            cx={point.x}
-            cy={point.y}
-            r={index === points.length - 1 ? "2.8" : "1.8"}
-            className={styles.sceneChartDot}
-          />
-        ))}
       </svg>
     </div>
   );
@@ -599,7 +578,8 @@ function AnimatedToken({
 
 export function ExerciseCardLab() {
   const sceneRef = useRef<HTMLDivElement | null>(null);
-  const totalRef = useRef<HTMLDivElement | null>(null);
+  const headlineRef = useRef<HTMLDivElement | null>(null);
+  const impactRef = useRef<HTMLSpanElement | null>(null);
   const minusRef = useRef<HTMLButtonElement | null>(null);
   const plusOneRef = useRef<HTMLButtonElement | null>(null);
   const plusThreeRef = useRef<HTMLButtonElement | null>(null);
@@ -623,6 +603,10 @@ export function ExerciseCardLab() {
   const commitLockRef = useRef(false);
   const commitRemainingRef = useRef(0);
 
+  const actualProgress = clamp((committedTotal / CARD.target) * 100, 0, 100);
+  const projectedProgress = clamp(((committedTotal + pendingIds.length) / CARD.target) * 100, 0, 100);
+  const remaining = Math.max(0, CARD.target - committedTotal);
+
   const clearQueuedTimeouts = useCallback(() => {
     for (const timeoutId of timeoutIdsRef.current) {
       window.clearTimeout(timeoutId);
@@ -643,7 +627,7 @@ export function ExerciseCardLab() {
   const measureScene = useCallback(() => {
     if (
       !sceneRef.current ||
-      !totalRef.current ||
+      !impactRef.current ||
       !minusRef.current ||
       !plusOneRef.current ||
       !plusThreeRef.current ||
@@ -672,7 +656,7 @@ export function ExerciseCardLab() {
       plus1: toPoint(plusOneRef.current),
       plus3: toPoint(plusThreeRef.current),
       plus5: toPoint(plusFiveRef.current),
-      counter: toPoint(totalRef.current),
+      counter: toPoint(impactRef.current),
     };
 
     setIsReady(true);
@@ -698,6 +682,10 @@ export function ExerciseCardLab() {
       window.removeEventListener("resize", measureScene);
     };
   }, [measureScene]);
+
+  useEffect(() => {
+    measureScene();
+  }, [actualProgress, measureScene]);
 
   useEffect(() => {
     return () => {
@@ -744,19 +732,33 @@ export function ExerciseCardLab() {
   }, []);
 
   useEffect(() => {
-    if (counterPulseTick === 0 || !totalRef.current) {
+    if (counterPulseTick === 0 || !headlineRef.current) {
       return;
     }
 
     const motion = buildCounterMotion(counterDirection, MOTION_CONFIG.counter);
-    const animation = totalRef.current.animate(motion.keyframes, {
+    const textAnimation = headlineRef.current.animate(motion.keyframes, {
       duration: motion.duration,
       easing: motion.easing,
       fill: "both",
     });
 
+    const dotAnimation = impactRef.current?.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
+        { offset: 0.4, transform: "translate(-50%, -50%) scale(1.45)", opacity: 1 },
+        { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
+      ],
+      {
+        duration: motion.duration,
+        easing: motion.easing,
+        fill: "both",
+      }
+    );
+
     return () => {
-      animation.cancel();
+      textAnimation.cancel();
+      dotAnimation?.cancel();
     };
   }, [counterDirection, counterPulseTick]);
 
@@ -800,6 +802,8 @@ export function ExerciseCardLab() {
 
     commitIds.forEach((tokenId, index) => {
       schedule(() => {
+        const nextTarget = anchorsRef.current?.counter ?? anchors.counter;
+
         setTokens((current) =>
           current.map((token) => {
             if (token.id !== tokenId) {
@@ -810,7 +814,7 @@ export function ExerciseCardLab() {
               ...token,
               phase: "drop",
               from: { x: token.x, y: token.y },
-              to: anchors.counter,
+              to: nextTarget,
               motionKey: token.motionKey + 1,
               motionIndex: index,
               motionTotal: commitIds.length,
@@ -973,14 +977,16 @@ export function ExerciseCardLab() {
     }
 
     const id = makeTokenId();
+    const startPoint = anchorsRef.current?.counter ?? anchors.counter;
+
     setTokens((current) => [
       ...current,
       {
         id,
         phase: "removeCommitted",
-        x: anchors.counter.x,
-        y: anchors.counter.y,
-        from: anchors.counter,
+        x: startPoint.x,
+        y: startPoint.y,
+        from: startPoint,
         to: anchors.minus,
         motionKey: 0,
         motionIndex: 0,
@@ -1046,37 +1052,6 @@ export function ExerciseCardLab() {
     [finishCommit, pulseCounter]
   );
 
-  const resetDemo = useCallback(() => {
-    clearQueuedTimeouts();
-    sequenceRef.current = 0;
-    timerDeadlineRef.current = null;
-    commitLockRef.current = false;
-    commitRemainingRef.current = 0;
-    pendingIdsRef.current = [];
-    setTokens([]);
-    setPendingIds([]);
-    setCommittedTotal(CARD.current);
-    setTimeLeftMs(0);
-    setIsCommitting(false);
-  }, [clearQueuedTimeouts]);
-
-  const remaining = Math.max(0, CARD.target - committedTotal);
-  const projectedProgress = clamp(((committedTotal + pendingIds.length) / CARD.target) * 100, 0, 100);
-  const actualProgress = clamp((committedTotal / CARD.target) * 100, 0, 100);
-  const bufferProgress = isCommitting ? 100 : pendingIds.length === 0 ? 0 : (timeLeftMs / BUFFER_MS) * 100;
-
-  const statusText = useMemo(() => {
-    if (isCommitting) {
-      return "Коммит";
-    }
-
-    if (pendingIds.length > 0) {
-      return `${(timeLeftMs / 1000).toFixed(1)}с`;
-    }
-
-    return "Готово";
-  }, [isCommitting, pendingIds.length, timeLeftMs]);
-
   const themeStyle = useMemo(
     () =>
       ({
@@ -1106,42 +1081,29 @@ export function ExerciseCardLab() {
         <div ref={sceneRef} className={styles.scene}>
           <BackgroundChart values={CARD.chart} />
 
-          <div className={styles.progressTrack}>
-            <div
-              className={cn(styles.progressFill, isCommitting && styles.progressCommitting)}
-              style={{ width: `${clamp(bufferProgress, 0, 100)}%` }}
-            />
-          </div>
-
-          <div className={styles.headerOverlay}>
-            <Badge className={styles.cardBadge}>{CARD.badge}</Badge>
-            <div className={styles.exerciseName}>{CARD.exercise}</div>
-            <div className={styles.exerciseCluster}>{CARD.cluster}</div>
-          </div>
-
-          <div className={styles.goalOverlay}>
-            <div className={styles.goalLabel}>Цель</div>
-            <div className={styles.goalTarget}>{CARD.target}</div>
-            <div className={styles.goalCurrent}>
-              {committedTotal}
-              <span> / {CARD.target}</span>
+          <div className={styles.header}>
+            <div className={styles.titleRow}>
+              <h1 className={styles.exerciseName}>{CARD.exercise}</h1>
+              <div className={styles.remainingChip}>
+                <span>Осталось</span>
+                <strong>{remaining}</strong>
+              </div>
             </div>
-            <div className={styles.goalTrack}>
-              <div className={styles.goalProjectedFill} style={{ width: `${projectedProgress}%` }} />
-              <div className={styles.goalActualFill} style={{ width: `${actualProgress}%` }} />
+
+            <div ref={headlineRef} className={styles.progressValue}>
+              <span className={styles.progressDone}>{committedTotal}</span>
+              <span className={styles.progressDivider}>/</span>
+              <span className={styles.progressGoal}>{CARD.target}</span>
             </div>
-            <div className={styles.goalMeta}>Осталось {remaining}</div>
+
+            <div className={styles.progressBar}>
+              <div className={styles.progressProjectedFill} style={{ width: `${projectedProgress}%` }} />
+              <div className={styles.progressActualFill} style={{ width: `${actualProgress}%` }} />
+              <span ref={impactRef} className={styles.progressImpactDot} style={{ left: `${actualProgress}%` }} />
+            </div>
           </div>
 
           <div className={styles.holdZone} />
-
-          <div className={styles.centerpiece}>
-            <div className={styles.centerAura} />
-            <div className={styles.centerKicker}>сегодня</div>
-            <div ref={totalRef} className={styles.centerTotal}>
-              {committedTotal}
-            </div>
-          </div>
 
           {tokens.map((token) => (
             <AnimatedToken
@@ -1152,20 +1114,7 @@ export function ExerciseCardLab() {
             />
           ))}
 
-          <div className={styles.stageStatus}>
-            <div className={styles.statusPill}>
-              <span>Буфер</span>
-              <strong>{pendingIds.length}</strong>
-              <em>{statusText}</em>
-            </div>
-            <div className={styles.statusPill}>
-              <span>До цели</span>
-              <strong>{remaining}</strong>
-              <em>{pendingIds.length > 0 ? `Будет ${committedTotal + pendingIds.length}` : `${Math.round(actualProgress)}%`}</em>
-            </div>
-          </div>
-
-          <div className={styles.buttonDock}>
+          <div className={styles.controls}>
             <Button
               ref={minusRef}
               variant="outline"
@@ -1175,59 +1124,36 @@ export function ExerciseCardLab() {
             >
               -1
             </Button>
-            <Button
-              ref={plusOneRef}
-              className={cn(styles.controlButton, styles.plusButton)}
-              style={buttonStyle}
-              onClick={() => handleAdd(1, "plus1")}
-              disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
-            >
-              +1
-            </Button>
-            <Button
-              ref={plusThreeRef}
-              className={cn(styles.controlButton, styles.plusButton)}
-              style={buttonStyle}
-              onClick={() => handleAdd(3, "plus3")}
-              disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
-            >
-              +3
-            </Button>
-            <Button
-              ref={plusFiveRef}
-              className={cn(styles.controlButton, styles.plusButton)}
-              style={buttonStyle}
-              onClick={() => handleAdd(5, "plus5")}
-              disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
-            >
-              +5
-            </Button>
-          </div>
-        </div>
 
-        <div className={styles.sheet}>
-          <div className={styles.metricRow}>
-            {CARD.metrics.map((metric) => (
-              <div key={metric.label} className={styles.metricCard}>
-                <span>{metric.label}</span>
-                <strong>{metric.value}</strong>
-              </div>
-            ))}
-          </div>
-
-          <div className={styles.sheetFooter}>
-            <div className={styles.dayProgress}>
-              <span>Сегодня</span>
-              <strong>
-                {committedTotal} / {CARD.target}
-              </strong>
+            <div className={styles.addButtons}>
+              <Button
+                ref={plusOneRef}
+                className={cn(styles.controlButton, styles.plusButton)}
+                style={buttonStyle}
+                onClick={() => handleAdd(1, "plus1")}
+                disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
+              >
+                +1
+              </Button>
+              <Button
+                ref={plusThreeRef}
+                className={cn(styles.controlButton, styles.plusButton)}
+                style={buttonStyle}
+                onClick={() => handleAdd(3, "plus3")}
+                disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
+              >
+                +3
+              </Button>
+              <Button
+                ref={plusFiveRef}
+                className={cn(styles.controlButton, styles.plusButton)}
+                style={buttonStyle}
+                onClick={() => handleAdd(5, "plus5")}
+                disabled={!isReady || isCommitting || pendingIds.length >= MAX_PENDING}
+              >
+                +5
+              </Button>
             </div>
-            <div className={styles.dayTrack}>
-              <div className={styles.dayTrackFill} style={{ width: `${actualProgress}%` }} />
-            </div>
-            <Button variant="secondary" size="sm" className={styles.resetButton} onClick={resetDemo}>
-              Сброс
-            </Button>
           </div>
         </div>
       </article>
