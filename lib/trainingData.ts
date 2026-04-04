@@ -722,7 +722,7 @@ export async function getTrainingOverview(options?: {
   });
 
   if (error) {
-    if (isMissingRpcFunction(error)) {
+    if (isMissingRpcFunction(error) || isMissingRelation(error)) {
       return getTrainingOverviewFromQueries(session, options);
     }
 
@@ -772,7 +772,7 @@ export async function getWeeklyPlan(): Promise<WeeklyPlan> {
   const { data, error } = await supabase.rpc("get_weekly_plan");
 
   if (error) {
-    if (isMissingRpcFunction(error)) {
+    if (isMissingRpcFunction(error) || isMissingRelation(error)) {
       return getWeeklyPlanFromQueries(session);
     }
 
@@ -797,7 +797,7 @@ export async function getTrainingStats(): Promise<TrainingStats> {
   const { data, error } = await supabase.rpc("get_training_stats");
 
   if (error) {
-    if (isMissingRpcFunction(error)) {
+    if (isMissingRpcFunction(error) || isMissingRelation(error)) {
       return getTrainingStatsFromQueries(session);
     }
 

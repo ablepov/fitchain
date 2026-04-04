@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { CalendarDays, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import {
+  type PlanApiRecord,
   createExercise,
   createPlanAssignment,
   createSet,
@@ -14,7 +15,12 @@ import {
   updateExercise,
 } from "@/lib/apiClient";
 import {
+  applyCreatedExerciseToOverviewCaches,
+  applyCreatedPlanAssignmentToCaches,
   applyCreatedSetToOverviewCaches,
+  applyDeletedExerciseToCaches,
+  applyDeletedPlanAssignmentToCaches,
+  applyUpdatedExerciseToCaches,
   restoreTrainingOverviewCaches,
   snapshotTrainingOverviewCaches,
 } from "@/lib/cacheUpdates";
@@ -441,19 +447,24 @@ export function HomePageClient() {
         goal: payload.goal,
       });
 
+      let assignment: PlanApiRecord | null = null;
       if (payload.weekday !== null) {
-        await createPlanAssignment({
+        assignment = await createPlanAssignment({
           exerciseId: exercise.id,
           weekday: payload.weekday,
         });
       }
 
-      return exercise;
+      return { exercise, assignment };
     },
-    onSuccess: async () => {
+    onSuccess: ({ exercise, assignment }) => {
       closeCreateSheet();
+      applyCreatedExerciseToOverviewCaches(queryClient, exercise);
+      if (assignment) {
+        applyCreatedPlanAssignmentToCaches(queryClient, assignment, exercise);
+      }
       setMessage("Упражнение создано");
-      await Promise.all([
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
         queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
@@ -469,10 +480,11 @@ export function HomePageClient() {
 
   const updateExerciseMutation = useMutation({
     mutationFn: (payload: { id: string; type: string; goal: number }) => updateExercise(payload),
-    onSuccess: async () => {
+    onSuccess: (exercise) => {
       setEditContext(null);
+      applyUpdatedExerciseToCaches(queryClient, exercise);
       setMessage("Упражнение обновлено");
-      await Promise.all([
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
         queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
@@ -488,11 +500,12 @@ export function HomePageClient() {
 
   const deleteExerciseMutation = useMutation({
     mutationFn: (exerciseId: string) => deleteExercise(exerciseId),
-    onSuccess: async () => {
+    onSuccess: (_deleted, exerciseId) => {
       setActionContext(null);
       setPlanningContext(null);
+      applyDeletedExerciseToCaches(queryClient, exerciseId);
       setMessage("Упражнение удалено");
-      await Promise.all([
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
         queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
@@ -508,8 +521,13 @@ export function HomePageClient() {
 
   const createPlanMutation = useMutation({
     mutationFn: (payload: { exerciseId: string; weekday: number }) => createPlanAssignment(payload),
-    onSuccess: async () => {
-      await Promise.all([
+    onSuccess: (assignment, payload) => {
+      const exercise = overview.exercises.find((item) => item.id === payload.exerciseId);
+      if (exercise) {
+        applyCreatedPlanAssignmentToCaches(queryClient, assignment, exercise);
+      }
+
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
@@ -524,8 +542,10 @@ export function HomePageClient() {
 
   const deletePlanMutation = useMutation({
     mutationFn: (id: string) => deletePlanAssignment(id),
-    onSuccess: async () => {
-      await Promise.all([
+    onSuccess: (_deleted, assignmentId) => {
+      applyDeletedPlanAssignmentToCaches(queryClient, assignmentId);
+
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
         queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),

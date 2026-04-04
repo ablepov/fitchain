@@ -53,6 +53,7 @@ export const config = {
     "/",
     "/auth/:path*",
     "/dashboard/:path*",
+    "/stats/:path*",
     "/profile/:path*",
     "/animation-lab/:path*",
     "/api/:path*",
