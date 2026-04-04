@@ -49,7 +49,7 @@
 }
 
 .heroTitle {
-  max-width: 50rem;
+  max-width: 52rem;
   font-size: clamp(1.7rem, 4vw, 3rem);
   line-height: 0.98;
   letter-spacing: -0.06em;
@@ -131,7 +131,7 @@
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
   scroll-padding-inline: 1rem;
-  padding-bottom: 0.4rem;
+  padding-bottom: 0.5rem;
 }
 
 .carousel::-webkit-scrollbar {
@@ -144,35 +144,27 @@
 }
 
 .slide {
-  flex: 0 0 min(34rem, calc(100vw - 2rem));
-  width: min(34rem, calc(100vw - 2rem));
+  flex: 0 0 min(36rem, calc(100vw - 2rem));
+  width: min(36rem, calc(100vw - 2rem));
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
 
-.exerciseCard {
-  --card-accent: #63d5ff;
-  --card-accent-strong: #dcf7ff;
-  --card-accent-soft: rgba(99, 213, 255, 0.18);
-  --card-glow: rgba(99, 213, 255, 0.35);
-  --card-surface-start: rgba(7, 22, 34, 0.98);
-  --card-surface-end: rgba(2, 6, 10, 0.98);
-  --scene-start: rgba(6, 20, 31, 0.98);
+.card {
+  --card-accent: #6ad7ff;
+  --card-accent-strong: #dcf9ff;
+  --card-accent-soft: rgba(106, 215, 255, 0.18);
+  --card-glow: rgba(106, 215, 255, 0.34);
+  --card-surface-start: rgba(8, 24, 37, 0.98);
+  --card-surface-end: rgba(3, 7, 12, 0.98);
+  --scene-start: rgba(7, 20, 31, 0.98);
   --scene-end: rgba(3, 9, 16, 0.98);
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    "lead"
-    "goal"
-    "scene"
-    "metrics"
-    "coach"
-    "footer";
-  gap: 0.85rem;
-  min-height: 47rem;
+  gap: 0.9rem;
+  min-height: 48rem;
   overflow: hidden;
-  border-radius: 2.15rem;
+  border-radius: 2.2rem;
   border: 1px solid rgba(255, 255, 255, 0.09);
   background:
     radial-gradient(circle at top left, var(--card-accent-soft), transparent 28%),
@@ -186,7 +178,7 @@
   isolation: isolate;
 }
 
-.exerciseCard::before {
+.card::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -196,7 +188,7 @@
   pointer-events: none;
 }
 
-.exerciseCard::after {
+.card::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -208,48 +200,23 @@
   pointer-events: none;
 }
 
-.section {
+.surface {
   position: relative;
   z-index: 1;
   border-radius: 1.45rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
-    rgba(8, 8, 10, 0.46);
+    rgba(8, 8, 10, 0.48);
   padding: 0.95rem;
   backdrop-filter: blur(16px);
 }
 
-.leadSection {
-  grid-area: lead;
+.headerSurfaceCompact {
+  padding-bottom: 0.8rem;
 }
 
-.goalSection {
-  grid-area: goal;
-}
-
-.sceneSection {
-  grid-area: scene;
-  padding: 0;
-  overflow: hidden;
-}
-
-.metricsSection {
-  grid-area: metrics;
-}
-
-.coachSection {
-  grid-area: coach;
-}
-
-.footerSection {
-  grid-area: footer;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-}
-
-.leadTop {
+.headerTop {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -271,8 +238,8 @@
 }
 
 .exerciseName {
-  margin-top: 0.75rem;
-  font-size: clamp(1.45rem, 4vw, 2rem);
+  margin-top: 0.72rem;
+  font-size: clamp(1.45rem, 4vw, 2.05rem);
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.05em;
@@ -280,7 +247,7 @@
 }
 
 .exerciseCluster {
-  margin-top: 0.4rem;
+  margin-top: 0.35rem;
   font-size: 0.88rem;
   line-height: 1.5;
   color: rgba(228, 228, 231, 0.68);
@@ -307,11 +274,11 @@
 
 .goalTextBlock {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 
 .goalPrimaryValue {
-  font-size: clamp(1.7rem, 5vw, 2.3rem);
+  font-size: clamp(1.6rem, 5vw, 2.35rem);
   font-weight: 900;
   line-height: 0.98;
   letter-spacing: -0.07em;
@@ -385,12 +352,12 @@
 
 .goalMiniMeta {
   display: grid;
-  gap: 0.1rem;
+  gap: 0.12rem;
   text-align: right;
 }
 
 .goalMiniMeta strong {
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   line-height: 1;
   letter-spacing: -0.05em;
   color: rgba(250, 250, 250, 0.98);
@@ -432,7 +399,7 @@
 }
 
 .goalStackValue {
-  font-size: clamp(2.2rem, 8vw, 3rem);
+  font-size: clamp(2.1rem, 8vw, 3rem);
   font-weight: 900;
   line-height: 0.95;
   letter-spacing: -0.08em;
@@ -451,11 +418,176 @@
   color: rgba(245, 245, 245, 0.84);
 }
 
+.metricGrid {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metricTile,
+.metricRewardCard {
+  border-radius: 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(18, 18, 18, 0.82), rgba(10, 10, 10, 0.92));
+  padding: 0.75rem 0.8rem;
+}
+
+.metricTile span,
+.metricRewardCard span {
+  display: block;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.metricTile strong,
+.metricRewardCard strong {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.96rem;
+  line-height: 1.35;
+  color: rgba(250, 250, 250, 0.86);
+}
+
+.metricRail {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.metricRailPill,
+.questBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 8, 10, 0.58);
+  padding: 0.7rem 0.8rem;
+}
+
+.metricRailPill span,
+.questBadge span {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.44);
+}
+
+.metricRailPill strong,
+.questBadge strong {
+  font-size: 0.88rem;
+  color: rgba(250, 250, 250, 0.9);
+}
+
+.metricCapsuleList,
+.metricChecklist {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.metricCapsuleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 8, 10, 0.58);
+  padding: 0.72rem 0.9rem;
+}
+
+.metricCapsuleRow span,
+.metricChecklistText span {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.44);
+}
+
+.metricCapsuleRow strong,
+.metricChecklistText strong {
+  font-size: 0.92rem;
+  color: rgba(250, 250, 250, 0.9);
+}
+
+.metricChecklistItem {
+  display: flex;
+  align-items: start;
+  gap: 0.65rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(8, 8, 10, 0.48);
+  padding: 0.8rem;
+}
+
+.metricChecklistDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.35rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--card-accent);
+  box-shadow: 0 0 16px var(--card-glow);
+}
+
+.metricChecklistText {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.metricRewardGrid {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.footerSurface {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.footerMeta {
+  display: grid;
+  gap: 0.14rem;
+}
+
+.footerMeta span {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.footerMeta strong {
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: rgba(250, 250, 250, 0.86);
+}
+
+.resetButton {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.88);
+}
+
 .scene {
   position: relative;
-  min-height: 22.5rem;
+  min-height: 22.8rem;
   overflow: hidden;
-  border-radius: 1.65rem;
+  border-radius: 1.75rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
     radial-gradient(circle at 18% 12%, var(--card-glow), transparent 28%),
@@ -496,7 +628,7 @@
   inset: 3.8rem 0 4.2rem;
   z-index: 0;
   color: var(--card-accent);
-  opacity: 0.42;
+  opacity: 0.4;
 }
 
 .sceneChartSvg {
@@ -592,7 +724,7 @@
 }
 
 .sceneGoalMini {
-  min-width: 4.6rem;
+  min-width: 4.7rem;
   border-radius: 1.05rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(7, 7, 9, 0.5);
@@ -727,74 +859,6 @@
     0 16px 34px -22px var(--card-glow);
 }
 
-.metricGrid {
-  margin-top: 0.68rem;
-  display: grid;
-  gap: 0.55rem;
-}
-
-.metricPill {
-  border-radius: 1.15rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background:
-    linear-gradient(180deg, rgba(18, 18, 18, 0.82), rgba(10, 10, 10, 0.92));
-  padding: 0.75rem 0.8rem;
-}
-
-.metricLabel {
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.42);
-}
-
-.metricValue {
-  margin-top: 0.3rem;
-  font-size: 0.94rem;
-  line-height: 1.35;
-  color: rgba(250, 250, 250, 0.86);
-}
-
-.metricTilesMode .metricGrid,
-.metricStripMode .metricGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.metricStripMode .metricPill {
-  border-radius: 999px;
-  padding: 0.7rem 0.78rem;
-}
-
-.metricCapsuleMode .metricGrid {
-  grid-template-columns: 1fr;
-}
-
-.metricCapsuleMode .metricPill {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1rem;
-  border-radius: 999px;
-}
-
-.metricCapsuleMode .metricValue {
-  margin-top: 0;
-  text-align: right;
-}
-
-.footerCopyBlock {
-  display: grid;
-  gap: 0.05rem;
-}
-
-.resetButton {
-  align-self: flex-start;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.88);
-}
-
 .tokenShell {
   position: absolute;
   left: 0;
@@ -847,151 +911,232 @@
   animation-name: floatFlutter;
 }
 
-.apexLayout {
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "lead goal"
-    "scene scene"
-    "metrics metrics"
-    "coach footer";
+.heroOrbitCard {
+  grid-template-rows: auto auto auto auto;
 }
 
-.railLayout {
-  grid-template-areas:
-    "lead"
-    "scene"
-    "goal"
-    "metrics"
-    "footer"
-    "coach";
+.heroOrbitTop,
+.heroOrbitBottom {
+  display: grid;
+  gap: 0.9rem;
 }
 
-.coachLayout {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-  grid-template-areas:
-    "lead goal"
-    "coach coach"
-    "scene scene"
-    "metrics footer";
+.splitConsoleGrid,
+.coachBoardGrid,
+.commandGrid,
+.journalMain,
+.journalHeaderRow,
+.glassBottom,
+.posterSheetBottom,
+.heroOrbitTop,
+.heroOrbitBottom {
+  display: grid;
+  gap: 0.9rem;
 }
 
-.splitLayout {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-areas:
-    "lead lead"
-    "goal metrics"
-    "scene scene"
-    "coach footer";
+.posterOverlayCard {
+  padding: 0.8rem;
 }
 
-.orbitLayout {
-  grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
-  grid-template-areas:
-    "goal lead"
-    "scene scene"
-    "coach metrics"
-    "footer footer";
+.posterHero {
+  position: relative;
+  min-height: 30rem;
 }
 
-.posterLayout {
-  grid-template-areas:
-    "lead"
-    "scene"
-    "footer"
-    "goal"
-    "metrics"
-    "coach";
-  border-radius: 2.4rem 2.4rem 1.6rem 1.6rem;
+.posterScene {
+  min-height: 29rem;
+  border-radius: 2rem 2rem 1.2rem 1.2rem;
 }
 
-.blueprintLayout {
-  grid-template-areas:
-    "lead"
-    "metrics"
-    "scene"
-    "goal"
-    "coach"
-    "footer";
+.posterHeaderOverlay,
+.posterGoalOverlay,
+.glassGoalFloat {
+  position: absolute;
+  z-index: 4;
 }
 
-.capsuleLayout {
-  grid-template-areas:
-    "goal"
-    "lead"
-    "scene"
-    "metrics"
-    "footer"
-    "coach";
+.posterHeaderOverlay {
+  inset: 1rem 1rem auto;
+  max-width: 16rem;
 }
 
-.boardLayout {
-  grid-template-areas:
-    "lead"
-    "goal"
-    "metrics"
-    "coach"
-    "scene"
-    "footer";
+.posterGoalOverlay {
+  inset: auto 1rem 6rem;
+  width: min(17rem, calc(100% - 2rem));
 }
 
-.studioLayout {
-  grid-template-areas:
-    "lead"
-    "scene"
-    "goal"
-    "coach"
-    "footer"
-    "metrics";
+.overlaySurface {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    rgba(8, 8, 10, 0.7);
+  backdrop-filter: blur(18px);
 }
 
-.railLayout .section,
-.studioLayout .section {
-  border-radius: 1.25rem;
+.posterSheet {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: -1.2rem;
+  position: relative;
+  z-index: 3;
 }
 
-.coachLayout .coachSection {
-  transform: rotate(-1deg);
-  box-shadow: 0 18px 40px -28px var(--card-glow);
+.coachStickyWrap {
+  transform: rotate(-1.2deg);
 }
 
-.posterLayout .leadSection {
-  border-radius: 999px;
+.coachStickyNote {
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 240, 200, 0.12), rgba(255, 255, 255, 0.04)),
+    rgba(40, 24, 8, 0.58);
 }
 
-.posterLayout .scene {
-  min-height: 23.5rem;
-  border-radius: 1.9rem 1.9rem 1.2rem 1.2rem;
+.coachScene {
+  min-height: 24rem;
 }
 
-.blueprintLayout .section {
+.coachBoardSide {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.glassDashboardCard {
+  gap: 1rem;
+}
+
+.glassTelemetry {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.glassHeader,
+.glassMetrics {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    rgba(8, 14, 14, 0.48);
+  backdrop-filter: blur(20px);
+}
+
+.glassMetrics .metricRewardGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.glassDevice {
+  position: relative;
+}
+
+.glassScene {
+  min-height: 24.5rem;
+  border-radius: 2.1rem;
+}
+
+.glassGoalFloat {
+  inset: 1rem 1rem auto auto;
+  width: min(15rem, calc(100% - 2rem));
+}
+
+.blueprintGridCard {
   border-style: dashed;
+}
+
+.blueprintGridCard .surface {
+  border-style: dashed;
+  border-radius: 1rem;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.02)),
     rgba(8, 10, 14, 0.5);
 }
 
-.blueprintLayout .scene::after {
-  background-size: 100% 28px, 28px 100%;
+.blueprintSpecGrid {
+  display: grid;
+  gap: 0.75rem;
 }
 
-.capsuleLayout .goalSection,
-.capsuleLayout .footerSection,
-.capsuleLayout .coachSection {
+.blueprintScene {
+  min-height: 21.5rem;
+  border-radius: 1.2rem;
+}
+
+.capsuleFlowCard .surface {
   border-radius: 999px;
 }
 
-.capsuleLayout .leadSection {
-  border-radius: 1.9rem;
+.capsuleFlowColumn {
+  display: grid;
+  gap: 0.85rem;
 }
 
-.boardLayout .coachSection {
+.capsuleScene {
+  min-height: 22.5rem;
+  border-radius: 2.3rem;
+}
+
+.journalHeaderRow,
+.journalMain {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.journalHeader,
+.journalSummary {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
-    rgba(7, 10, 9, 0.5);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    rgba(7, 11, 10, 0.46);
 }
 
-.studioLayout .scene {
-  border-radius: 2.2rem 2.2rem 1.3rem 1.3rem;
+.journalPaper {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.journalGoal,
+.journalNote {
+  transform: rotate(-0.6deg);
+}
+
+.journalScene {
+  min-height: 20.5rem;
+  border-radius: 1.35rem;
+}
+
+.commandHero {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.commandHeroSide,
+.commandAside {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.commandScene {
+  min-height: 24rem;
+}
+
+.questTop,
+.questRewardZone {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.questBadgeRow {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.questBadge {
+  justify-content: space-between;
+}
+
+.questScene {
+  min-height: 23.8rem;
+  border-radius: 1.85rem;
+}
+
+.questMetrics .metricRewardGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 @keyframes centerPulse {
@@ -1084,67 +1229,63 @@
   }
 }
 
-@media (min-width: 720px) {
+@media (min-width: 760px) {
   .heroGrid {
     grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
     align-items: start;
     padding: 1.35rem;
   }
+
+  .heroOrbitTop {
+    grid-template-columns: minmax(0, 1.2fr) minmax(13rem, 0.8fr);
+  }
+
+  .heroOrbitBottom {
+    grid-template-columns: minmax(0, 1.1fr) minmax(14rem, 0.9fr);
+  }
+
+  .splitConsoleGrid {
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  }
+
+  .journalHeaderRow {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  }
+
+  .journalMain {
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  }
+
+  .commandHero {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  }
+
+  .commandGrid,
+  .coachBoardGrid {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  }
+
+  .glassTelemetry {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .blueprintSpecGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-@media (min-width: 900px) {
+@media (min-width: 980px) {
   .slide {
     flex-basis: min(38rem, calc(100vw - 6rem));
     width: min(38rem, calc(100vw - 6rem));
   }
-
-  .splitLayout {
-    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-    grid-template-areas:
-      "lead scene"
-      "goal scene"
-      "metrics scene"
-      "coach footer";
-  }
-
-  .orbitLayout {
-    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
-    grid-template-areas:
-      "goal lead"
-      "metrics scene"
-      "coach scene"
-      "footer footer";
-  }
-
-  .studioLayout {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    grid-template-areas:
-      "lead goal"
-      "scene scene"
-      "coach footer"
-      "metrics metrics";
-  }
 }
 
 @media (max-width: 640px) {
-  .exerciseCard {
-    min-height: 45.5rem;
-    border-radius: 1.85rem;
+  .card {
+    min-height: 46rem;
+    border-radius: 1.9rem;
     padding: 0.85rem;
-  }
-
-  .apexLayout,
-  .coachLayout,
-  .splitLayout,
-  .orbitLayout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "lead"
-      "goal"
-      "scene"
-      "metrics"
-      "coach"
-      "footer";
   }
 
   .goalRingPanel {
@@ -1156,13 +1297,27 @@
     height: 5.1rem;
   }
 
-  .metricTilesMode .metricGrid,
-  .metricStripMode .metricGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .metricGrid,
+  .metricRewardGrid,
+  .questBadgeRow {
+    grid-template-columns: 1fr;
   }
 
-  .scene {
-    min-height: 21.5rem;
+  .goalStackRow,
+  .goalBarHeader,
+  .footerSurface {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .posterHeaderOverlay {
+    inset: 0.8rem 0.8rem auto;
+    max-width: calc(100% - 1.6rem);
+  }
+
+  .posterGoalOverlay {
+    inset: auto 0.8rem 5.8rem;
+    width: calc(100% - 1.6rem);
   }
 }
 
@@ -1172,14 +1327,7 @@
     width: calc(100vw - 2rem);
   }
 
-  .metricTilesMode .metricGrid,
-  .metricStripMode .metricGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .goalStackRow,
-  .goalBarHeader {
-    flex-direction: column;
-    align-items: start;
+  .scene {
+    min-height: 21.8rem;
   }
 }
