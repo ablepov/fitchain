@@ -156,7 +156,13 @@ function isMissingRelation(error: { code?: string; message?: string } | null) {
     return false;
   }
 
-  return error.code === "42P01" || /relation .* does not exist/i.test(error.message ?? "");
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    /relation .* does not exist|Could not find the table .* in the schema cache/i.test(
+      error.message ?? ""
+    )
+  );
 }
 
 function uniqueSortedWeekdays(values: number[]) {

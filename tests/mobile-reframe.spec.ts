@@ -18,6 +18,7 @@ test.use({
 });
 
 async function swipeLeft(page: Page, viewport: Locator) {
+  await expect(viewport).toBeVisible();
   const box = await viewport.boundingBox();
   if (!box) {
     throw new Error("Carousel viewport is not visible");
@@ -72,6 +73,7 @@ test("terminal add card creates a new exercise slide", async ({ page }) => {
 
   await expect(page.getByText("Упражнение создано")).toBeVisible();
 
+  await expect(viewport).toBeVisible();
   await swipeLeft(page, viewport);
   await expect(page.getByText("Burpees")).toBeVisible();
 });

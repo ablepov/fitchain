@@ -465,10 +465,13 @@ export function HomePageClient() {
       }
       setMessage("Упражнение создано");
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.profileSnapshot }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.trainingOverviewRoot,
+          refetchType: "inactive",
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats, refetchType: "inactive" }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan, refetchType: "inactive" }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.profileSnapshot, refetchType: "inactive" }),
       ]);
     },
     onError: (error) => {
@@ -485,10 +488,13 @@ export function HomePageClient() {
       applyUpdatedExerciseToCaches(queryClient, exercise);
       setMessage("Упражнение обновлено");
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.profileSnapshot }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.trainingOverviewRoot,
+          refetchType: "inactive",
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats, refetchType: "inactive" }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan, refetchType: "inactive" }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.profileSnapshot, refetchType: "inactive" }),
       ]);
     },
     onError: (error) => {
@@ -506,10 +512,13 @@ export function HomePageClient() {
       applyDeletedExerciseToCaches(queryClient, exerciseId);
       setMessage("Упражнение удалено");
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.profileSnapshot }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.trainingOverviewRoot,
+          refetchType: "inactive",
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats, refetchType: "inactive" }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan, refetchType: "inactive" }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.profileSnapshot, refetchType: "inactive" }),
       ]);
     },
     onError: (error) => {
@@ -528,9 +537,12 @@ export function HomePageClient() {
       }
 
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan, refetchType: "inactive" }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.trainingOverviewRoot,
+          refetchType: "inactive",
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats, refetchType: "inactive" }),
       ]);
     },
     onError: (error) => {
@@ -546,9 +558,12 @@ export function HomePageClient() {
       applyDeletedPlanAssignmentToCaches(queryClient, assignmentId);
 
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingOverviewRoot }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.weeklyPlan, refetchType: "inactive" }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.trainingOverviewRoot,
+          refetchType: "inactive",
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.trainingStats, refetchType: "inactive" }),
       ]);
     },
     onError: (error) => {
