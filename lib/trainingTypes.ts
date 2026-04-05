@@ -44,6 +44,7 @@ export type WeeklyPlanDay = {
 
 export type WeeklyPlan = {
   timezone: string;
+  isAvailable: boolean;
   days: WeeklyPlanDay[];
 };
 

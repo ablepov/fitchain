@@ -41,10 +41,6 @@ export async function DELETE(
     set_id: params.id,
   });
 
-  if (rpcError && !isMissingRpcFunction(rpcError)) {
-    return jsonError(500, "INTERNAL_ERROR", rpcError.message);
-  }
-
   if (!rpcError) {
     if (!rpcData) {
       return jsonError(404, "NOT_FOUND", "Set not found");

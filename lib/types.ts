@@ -30,6 +30,7 @@ export type ApiError = {
     | 'FORBIDDEN'
     | 'NOT_FOUND'
     | 'CONFLICT'
+    | 'FEATURE_UNAVAILABLE'
     | 'VALIDATION_ERROR'
     | 'RATE_LIMITED'
     | 'INTERNAL_ERROR';

@@ -2,6 +2,13 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
 import {
+  databaseCapabilityKeys,
+  isCapabilityUnavailable,
+  isMissingRelationError,
+  markCapabilityAvailable,
+  markCapabilityUnavailable,
+} from "@/lib/databaseCapabilities";
+import {
   applyMockStateCookies,
   getMockExercises,
   getMockSchedule,
@@ -64,14 +71,22 @@ export async function DELETE(
     return jsonError(404, "NOT_FOUND", "Exercise not found");
   }
 
-  const { error: deleteScheduleError } = await supabase
-    .from("exercise_schedule")
-    .delete()
-    .eq("exercise_id", params.id)
-    .eq("user_id", userId);
+  if (!isCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable)) {
+    const { error: deleteScheduleError } = await supabase
+      .from("exercise_schedule")
+      .delete()
+      .eq("exercise_id", params.id)
+      .eq("user_id", userId);
 
-  if (deleteScheduleError && deleteScheduleError.code !== "42P01") {
-    return jsonError(500, "INTERNAL_ERROR", deleteScheduleError.message);
+    if (deleteScheduleError) {
+      if (isMissingRelationError(deleteScheduleError)) {
+        markCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable);
+      } else {
+        return jsonError(500, "INTERNAL_ERROR", deleteScheduleError.message);
+      }
+    } else {
+      markCapabilityAvailable(databaseCapabilityKeys.exerciseScheduleTable);
+    }
   }
 
   const { error: deleteError } = await supabase

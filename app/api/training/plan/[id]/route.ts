@@ -1,7 +1,20 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
-import { applyMockStateCookies, getMockSchedule, isE2EMockMode } from "@/lib/e2eMock";
+import {
+  databaseCapabilityKeys,
+  isCapabilityUnavailable,
+  isMissingRelationError,
+  markCapabilityAvailable,
+  markCapabilityUnavailable,
+  SCHEDULE_FEATURE_UNAVAILABLE_MESSAGE,
+} from "@/lib/databaseCapabilities";
+import {
+  applyMockStateCookies,
+  getMockSchedule,
+  isE2EMockMode,
+  isMockPlannerDisabled,
+} from "@/lib/e2eMock";
 import { getAuthenticatedRouteContext } from "@/lib/supabaseServer";
 
 const patchSchema = z
@@ -28,6 +41,10 @@ function getNextPosition(scheduleRows: Array<{ id: string; weekday: number; posi
   return Math.max(...sameDayRows.map((row) => row.position)) + 1;
 }
 
+function jsonPlannerUnavailable() {
+  return jsonError(503, "FEATURE_UNAVAILABLE", SCHEDULE_FEATURE_UNAVAILABLE_MESSAGE);
+}
+
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> } | { params: { id: string } }
@@ -49,6 +66,10 @@ export async function PATCH(
   const params = await resolveParams(context);
 
   if (isE2EMockMode()) {
+    if (isMockPlannerDisabled(req.cookies)) {
+      return jsonPlannerUnavailable();
+    }
+
     const schedule = getMockSchedule(req.cookies);
     const currentRow = schedule.find((row) => row.id === params.id);
 
@@ -84,6 +105,10 @@ export async function PATCH(
     return jsonError(401, "UNAUTHORIZED", "No session");
   }
 
+  if (isCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable)) {
+    return jsonPlannerUnavailable();
+  }
+
   const { data: currentRow, error: currentError } = await supabase
     .from("exercise_schedule")
     .select("id, exercise_id, weekday, position")
@@ -92,8 +117,9 @@ export async function PATCH(
     .maybeSingle();
 
   if (currentError) {
-    if (currentError.code === "42P01") {
-      return jsonError(500, "INTERNAL_ERROR", "exercise_schedule table is missing");
+    if (isMissingRelationError(currentError)) {
+      markCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable);
+      return jsonPlannerUnavailable();
     }
 
     return jsonError(500, "INTERNAL_ERROR", currentError.message);
@@ -109,8 +135,15 @@ export async function PATCH(
     .eq("user_id", userId);
 
   if (allRowsError) {
+    if (isMissingRelationError(allRowsError)) {
+      markCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable);
+      return jsonPlannerUnavailable();
+    }
+
     return jsonError(500, "INTERNAL_ERROR", allRowsError.message);
   }
+
+  markCapabilityAvailable(databaseCapabilityKeys.exerciseScheduleTable);
 
   const nextWeekday = parsed.data.weekday ?? currentRow.weekday;
   const nextPosition =
@@ -146,6 +179,11 @@ export async function PATCH(
       return jsonError(409, "CONFLICT", "Exercise already scheduled for this day");
     }
 
+    if (isMissingRelationError(error)) {
+      markCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable);
+      return jsonPlannerUnavailable();
+    }
+
     return jsonError(500, "INTERNAL_ERROR", error.message);
   }
 
@@ -159,6 +197,10 @@ export async function DELETE(
   const params = await resolveParams(context);
 
   if (isE2EMockMode()) {
+    if (isMockPlannerDisabled(req.cookies)) {
+      return jsonPlannerUnavailable();
+    }
+
     const schedule = getMockSchedule(req.cookies);
     const currentRow = schedule.find((row) => row.id === params.id);
 
@@ -178,6 +220,10 @@ export async function DELETE(
     return jsonError(401, "UNAUTHORIZED", "No session");
   }
 
+  if (isCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable)) {
+    return jsonPlannerUnavailable();
+  }
+
   const { data, error } = await supabase
     .from("exercise_schedule")
     .delete()
@@ -187,12 +233,15 @@ export async function DELETE(
     .single();
 
   if (error) {
-    if (error.code === "42P01") {
-      return jsonError(500, "INTERNAL_ERROR", "exercise_schedule table is missing");
+    if (isMissingRelationError(error)) {
+      markCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable);
+      return jsonPlannerUnavailable();
     }
 
     return jsonError(500, "INTERNAL_ERROR", error.message);
   }
+
+  markCapabilityAvailable(databaseCapabilityKeys.exerciseScheduleTable);
 
   if (!data) {
     return jsonError(404, "NOT_FOUND", "Plan item not found");

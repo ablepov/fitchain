@@ -1,6 +1,14 @@
 import { cookies } from "next/headers";
 import { z } from "zod";
 import {
+  databaseCapabilityKeys,
+  isCapabilityUnavailable,
+  isMissingRelationError,
+  isMissingRpcFunctionError,
+  markCapabilityAvailable,
+  markCapabilityUnavailable,
+} from "@/lib/databaseCapabilities";
+import {
   formatDateKeyInTimezone,
   getDayBoundsISO,
   getMonthBoundsISO,
@@ -13,6 +21,7 @@ import {
   getMockSchedule,
   getMockSets,
   getMockTimezone,
+  isMockPlannerDisabled,
 } from "@/lib/e2eMock";
 import { requireAppSession } from "@/lib/appSession";
 import type {
@@ -98,6 +107,7 @@ const profilePagePayloadSchema = z.object({
 
 const weeklyPlanPayloadSchema = z.object({
   timezone: z.string(),
+  isAvailable: z.boolean().optional(),
   days: z.array(
     z.object({
       weekday: z.number().int(),
@@ -143,28 +153,6 @@ const trainingStatsPayloadSchema = z.object({
   }),
 });
 
-function isMissingRpcFunction(error: { code?: string; message?: string } | null) {
-  if (!error) {
-    return false;
-  }
-
-  return error.code === "PGRST202" || /function .* does not exist|Could not find the function/i.test(error.message ?? "");
-}
-
-function isMissingRelation(error: { code?: string; message?: string } | null) {
-  if (!error) {
-    return false;
-  }
-
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    /relation .* does not exist|Could not find the table .* in the schema cache/i.test(
-      error.message ?? ""
-    )
-  );
-}
-
 function uniqueSortedWeekdays(values: number[]) {
   return [...new Set(values)].sort((a, b) => a - b);
 }
@@ -186,9 +174,10 @@ function createProfilePageData(email: string | null, timezone: string): ProfileP
   };
 }
 
-function createEmptyPlan(timezone: string): WeeklyPlan {
+function createEmptyPlan(timezone: string, isAvailable = true): WeeklyPlan {
   return {
     timezone,
+    isAvailable,
     days: Array.from({ length: 7 }, (_, weekday) => ({
       weekday,
       items: [],
@@ -307,7 +296,8 @@ function buildOverviewFromRows(input: {
 function buildWeeklyPlanFromRows(
   timezone: string,
   exercises: ExerciseRecord[],
-  scheduleRows: ScheduleRecord[]
+  scheduleRows: ScheduleRecord[],
+  isAvailable = true
 ): WeeklyPlan {
   const exerciseMap = new Map(exercises.map((exercise) => [exercise.id, exercise]));
   const days = Array.from({ length: 7 }, (_, weekday) => ({
@@ -336,6 +326,7 @@ function buildWeeklyPlanFromRows(
 
   return {
     timezone,
+    isAvailable,
     days,
   };
 }
@@ -464,7 +455,13 @@ function parseProfilePagePayload(payload: unknown, email: string | null): Profil
 }
 
 function parseWeeklyPlanPayload(payload: unknown): WeeklyPlan {
-  return weeklyPlanPayloadSchema.parse(payload);
+  const parsed = weeklyPlanPayloadSchema.parse(payload);
+
+  return {
+    timezone: parsed.timezone,
+    isAvailable: parsed.isAvailable ?? true,
+    days: parsed.days,
+  };
 }
 
 function parseTrainingStatsPayload(payload: unknown): TrainingStats {
@@ -501,12 +498,28 @@ async function getBaseUserData(session: Awaited<ReturnType<typeof requireAppSess
   };
 }
 
-async function getScheduleRows(
+type ScheduleQueryResult = {
+  rows: ScheduleRecord[];
+  isAvailable: boolean;
+};
+
+async function getScheduleQueryResult(
   session: Awaited<ReturnType<typeof requireAppSession>>
-): Promise<ScheduleRecord[]> {
+): Promise<ScheduleQueryResult> {
   if (session.isMock || !session.supabase) {
     const cookieStore = await cookies();
-    return getMockSchedule(cookieStore);
+    const plannerDisabled = isMockPlannerDisabled(cookieStore);
+    return {
+      rows: plannerDisabled ? [] : getMockSchedule(cookieStore),
+      isAvailable: !plannerDisabled,
+    };
+  }
+
+  if (isCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable)) {
+    return {
+      rows: [],
+      isAvailable: false,
+    };
   }
 
   const { supabase, user } = session;
@@ -519,22 +532,30 @@ async function getScheduleRows(
     .order("created_at", { ascending: true });
 
   if (error) {
-    if (isMissingRelation(error)) {
-      return [];
+    if (isMissingRelationError(error)) {
+      markCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable);
+      return {
+        rows: [],
+        isAvailable: false,
+      };
     }
 
     throw new Error(error.message);
   }
 
-  return (
-    data?.map((row) => ({
-      id: row.id as string,
-      exercise_id: row.exercise_id as string,
-      weekday: row.weekday as number,
-      position: row.position as number,
-      created_at: row.created_at as string,
-    })) ?? []
-  );
+  markCapabilityAvailable(databaseCapabilityKeys.exerciseScheduleTable);
+
+  return {
+    rows:
+      data?.map((row) => ({
+        id: row.id as string,
+        exercise_id: row.exercise_id as string,
+        weekday: row.weekday as number,
+        position: row.position as number,
+        created_at: row.created_at as string,
+      })) ?? [],
+    isAvailable: true,
+  };
 }
 
 async function getTrainingOverviewFromQueries(
@@ -551,6 +572,7 @@ async function getTrainingOverviewFromQueries(
     const timezone = getMockTimezone(cookieStore);
     const exercises = getMockExercises(cookieStore);
     const sets = getMockSets(cookieStore);
+    const scheduleRows = isMockPlannerDisabled(cookieStore) ? [] : getMockSchedule(cookieStore);
     const todayBounds = getDayBoundsISO(timezone);
 
     return buildOverviewFromRows({
@@ -565,7 +587,7 @@ async function getTrainingOverviewFromQueries(
         })),
       recentSets: options?.includeRecentHistory === false ? [] : sets,
       chartSets: sets,
-      scheduleRows: getMockSchedule(cookieStore),
+      scheduleRows,
       recentLimit,
     });
   }
@@ -624,7 +646,7 @@ async function getTrainingOverviewFromQueries(
     throw new Error(recentSetsResult.error.message);
   }
 
-  const scheduleRows = await getScheduleRows(session);
+  const scheduleQuery = await getScheduleQueryResult(session);
 
   return buildOverviewFromRows({
     email: user.email ?? null,
@@ -635,7 +657,7 @@ async function getTrainingOverviewFromQueries(
       ((recentSetsResult?.data as Array<{ exercise_id: string; reps: number; created_at: string }> | null) ?? []),
     chartSets:
       ((chartSetsResult.data as Array<{ exercise_id: string; reps: number; created_at: string }> | null) ?? []),
-    scheduleRows,
+    scheduleRows: scheduleQuery.rows,
     recentLimit,
   });
 }
@@ -654,28 +676,35 @@ async function getWeeklyPlanFromQueries(session: Awaited<ReturnType<typeof requi
   if (session.isMock || !session.supabase) {
     const cookieStore = await cookies();
     const timezone = getMockTimezone(cookieStore);
-    return buildWeeklyPlanFromRows(timezone, getMockExercises(cookieStore), getMockSchedule(cookieStore));
+    const plannerDisabled = isMockPlannerDisabled(cookieStore);
+    return buildWeeklyPlanFromRows(
+      timezone,
+      getMockExercises(cookieStore),
+      plannerDisabled ? [] : getMockSchedule(cookieStore),
+      !plannerDisabled
+    );
   }
 
   const { timezone, exercises } = await getBaseUserData(session);
+  const scheduleQuery = await getScheduleQueryResult(session);
 
   if (exercises.length === 0) {
-    return createEmptyPlan(timezone);
+    return createEmptyPlan(timezone, scheduleQuery.isAvailable);
   }
 
-  const scheduleRows = await getScheduleRows(session);
-  return buildWeeklyPlanFromRows(timezone, exercises, scheduleRows);
+  return buildWeeklyPlanFromRows(timezone, exercises, scheduleQuery.rows, scheduleQuery.isAvailable);
 }
 
 async function getTrainingStatsFromQueries(session: Awaited<ReturnType<typeof requireAppSession>>) {
   if (session.isMock || !session.supabase) {
     const cookieStore = await cookies();
     const timezone = getMockTimezone(cookieStore);
+    const scheduleRows = isMockPlannerDisabled(cookieStore) ? [] : getMockSchedule(cookieStore);
     return buildTrainingStatsFromRows({
       timezone,
       exercises: getMockExercises(cookieStore),
       sets: getMockSets(cookieStore),
-      scheduleRows: getMockSchedule(cookieStore),
+      scheduleRows,
     });
   }
 
@@ -698,13 +727,13 @@ async function getTrainingStatsFromQueries(session: Awaited<ReturnType<typeof re
     throw new Error(error.message);
   }
 
-  const scheduleRows = await getScheduleRows(session);
+  const scheduleQuery = await getScheduleQueryResult(session);
 
   return buildTrainingStatsFromRows({
     timezone,
     exercises,
     sets: (data as Array<{ exercise_id: string; reps: number; created_at: string }> | null) ?? [],
-    scheduleRows,
+    scheduleRows: scheduleQuery.rows,
   });
 }
 
@@ -722,24 +751,31 @@ export async function getTrainingOverview(options?: {
   const recentLimit = options?.recentLimit ?? 20;
   const includeRecentHistory = options?.includeRecentHistory !== false;
 
-  const { data, error } = await supabase.rpc("get_training_overview", {
-    include_recent_history: includeRecentHistory,
-    recent_limit: recentLimit,
-  });
+  if (!isCapabilityUnavailable(databaseCapabilityKeys.getTrainingOverviewRpc)) {
+    const { data, error } = await supabase.rpc("get_training_overview", {
+      include_recent_history: includeRecentHistory,
+      recent_limit: recentLimit,
+    });
 
-  if (error) {
-    if (isMissingRpcFunction(error) || isMissingRelation(error)) {
-      return getTrainingOverviewFromQueries(session, options);
+    if (error) {
+      if (isMissingRpcFunctionError(error) || isMissingRelationError(error)) {
+        markCapabilityUnavailable(databaseCapabilityKeys.getTrainingOverviewRpc);
+        return getTrainingOverviewFromQueries(session, options);
+      }
+
+      throw new Error(error.message);
     }
 
-    throw new Error(error.message);
+    markCapabilityAvailable(databaseCapabilityKeys.getTrainingOverviewRpc);
+
+    try {
+      return parseTrainingOverviewPayload(data, user.email ?? null);
+    } catch {
+      return getTrainingOverviewFromQueries(session, options);
+    }
   }
 
-  try {
-    return parseTrainingOverviewPayload(data, user.email ?? null);
-  } catch {
-    return getTrainingOverviewFromQueries(session, options);
-  }
+  return getTrainingOverviewFromQueries(session, options);
 }
 
 export async function getProfilePageData(): Promise<ProfilePageData> {
@@ -750,21 +786,28 @@ export async function getProfilePageData(): Promise<ProfilePageData> {
   }
 
   const { supabase, user } = session;
-  const { data, error } = await supabase.rpc("get_profile_snapshot");
+  if (!isCapabilityUnavailable(databaseCapabilityKeys.getProfileSnapshotRpc)) {
+    const { data, error } = await supabase.rpc("get_profile_snapshot");
 
-  if (error) {
-    if (isMissingRpcFunction(error)) {
-      return getProfilePageDataFromQueries(session);
+    if (error) {
+      if (isMissingRpcFunctionError(error)) {
+        markCapabilityUnavailable(databaseCapabilityKeys.getProfileSnapshotRpc);
+        return getProfilePageDataFromQueries(session);
+      }
+
+      throw new Error(error.message);
     }
 
-    throw new Error(error.message);
+    markCapabilityAvailable(databaseCapabilityKeys.getProfileSnapshotRpc);
+
+    try {
+      return parseProfilePagePayload(data, user.email ?? null);
+    } catch {
+      return getProfilePageDataFromQueries(session);
+    }
   }
 
-  try {
-    return parseProfilePagePayload(data, user.email ?? null);
-  } catch {
-    return getProfilePageDataFromQueries(session);
-  }
+  return getProfilePageDataFromQueries(session);
 }
 
 export async function getWeeklyPlan(): Promise<WeeklyPlan> {
@@ -775,21 +818,28 @@ export async function getWeeklyPlan(): Promise<WeeklyPlan> {
   }
 
   const { supabase } = session;
-  const { data, error } = await supabase.rpc("get_weekly_plan");
+  if (!isCapabilityUnavailable(databaseCapabilityKeys.getWeeklyPlanRpc)) {
+    const { data, error } = await supabase.rpc("get_weekly_plan");
 
-  if (error) {
-    if (isMissingRpcFunction(error) || isMissingRelation(error)) {
-      return getWeeklyPlanFromQueries(session);
+    if (error) {
+      if (isMissingRpcFunctionError(error) || isMissingRelationError(error)) {
+        markCapabilityUnavailable(databaseCapabilityKeys.getWeeklyPlanRpc);
+        return getWeeklyPlanFromQueries(session);
+      }
+
+      throw new Error(error.message);
     }
 
-    throw new Error(error.message);
+    markCapabilityAvailable(databaseCapabilityKeys.getWeeklyPlanRpc);
+
+    try {
+      return parseWeeklyPlanPayload(data);
+    } catch {
+      return getWeeklyPlanFromQueries(session);
+    }
   }
 
-  try {
-    return parseWeeklyPlanPayload(data);
-  } catch {
-    return getWeeklyPlanFromQueries(session);
-  }
+  return getWeeklyPlanFromQueries(session);
 }
 
 export async function getTrainingStats(): Promise<TrainingStats> {
@@ -800,21 +850,28 @@ export async function getTrainingStats(): Promise<TrainingStats> {
   }
 
   const { supabase } = session;
-  const { data, error } = await supabase.rpc("get_training_stats");
+  if (!isCapabilityUnavailable(databaseCapabilityKeys.getTrainingStatsRpc)) {
+    const { data, error } = await supabase.rpc("get_training_stats");
 
-  if (error) {
-    if (isMissingRpcFunction(error) || isMissingRelation(error)) {
-      return getTrainingStatsFromQueries(session);
+    if (error) {
+      if (isMissingRpcFunctionError(error) || isMissingRelationError(error)) {
+        markCapabilityUnavailable(databaseCapabilityKeys.getTrainingStatsRpc);
+        return getTrainingStatsFromQueries(session);
+      }
+
+      throw new Error(error.message);
     }
 
-    throw new Error(error.message);
+    markCapabilityAvailable(databaseCapabilityKeys.getTrainingStatsRpc);
+
+    try {
+      return parseTrainingStatsPayload(data);
+    } catch {
+      return getTrainingStatsFromQueries(session);
+    }
   }
 
-  try {
-    return parseTrainingStatsPayload(data);
-  } catch {
-    return getTrainingStatsFromQueries(session);
-  }
+  return getTrainingStatsFromQueries(session);
 }
 
 export function getDefaultWeekdayForTimezone(timezone: string) {

@@ -1,49 +1,121 @@
-# MCP setup for this repository
+# Infrastructure Setup For This Repository
 
-This repository includes project-scoped MCP configuration for:
+This repository is wired to:
 
-- `supabase_fitchain`
-- `vercel_fitchain`
+- Supabase project `urlyouruvipktczhaflt`
+- Vercel project `ablepovs-projects/fitchain`
 
-## Project binding
+## What to use for what
 
-- Supabase project ref: `urlyouruvipktczhaflt`
-- Vercel team/project: `ablepovs-projects/fitchain`
+- Use `supabase_fitchain` MCP for schema inspection, generated types, logs, advisors, and read-side debugging.
+- Use the Supabase CLI for migrations and remote schema changes.
+- Use `vercel_fitchain` MCP for deployments, runtime/build logs, domains, and environment inspection.
 
-## Where the config lives
+The practical reason: MCP wiring in some clients may still be mounted read-only even when the repo config changes. The CLI is the reliable path for write operations.
 
-- Cursor-style workspace config: `mcp.json`
-- Optional local VS Code workspace config: `.vscode/mcp.json` (ignored by git)
-- Agent usage instructions: `AGENTS.md`
+## Installed CLI workflow
 
-## Authorization
+The repo now includes the official Supabase CLI as a dev dependency, so all commands can be run with `npx supabase` or the npm scripts below.
 
-### Vercel
+Available scripts in `package.json`:
 
-`vercel_fitchain` uses the official Vercel MCP endpoint and will ask for OAuth authorization on first use.
+- `npm run db:link`
+- `npm run db:status`
+- `npm run db:push`
+- `npm run db:push:all`
 
-### Supabase
+The initial migration for this project now lives at:
 
-The repo-level Supabase MCP URL is project-scoped and read-only.
+- `supabase/migrations/20260405090349_mobile_training_data_helpers.sql`
 
-For IDE clients that support Supabase MCP OAuth, authorize in the browser on first use.
+## What I still need from you to run remote migrations
 
-For Codex CLI, set a personal access token before starting Codex:
+I only need 2 secrets:
+
+1. `SUPABASE_ACCESS_TOKEN`
+2. The project's Postgres database password
+
+I do not need your publishable key or anon key for migrations.
+
+## Where to get `SUPABASE_ACCESS_TOKEN`
+
+Official CLI reference: https://supabase.com/docs/reference/cli/supabase-snippets-list
+
+Supabase says you can generate an access token here:
+
+- https://supabase.com/dashboard/account/tokens
+
+Steps:
+
+1. Open the link above while logged into the Supabase account that owns this project.
+2. Create a new personal access token.
+3. Copy the token value. It usually starts with `sbp_`.
+
+## Where to get the database password
+
+Official docs:
+
+- CLI reference: https://supabase.com/docs/reference/cli/supabase-snippets-list
+- Password reset guide: https://supabase.com/docs/guides/troubleshooting/how-do-i-reset-my-supabase-database-password-oTs5sB
+
+Supabase documents that the database password is managed from the project's Database Settings page.
+
+Steps:
+
+1. Open your project dashboard.
+2. Go to `Database`.
+3. Open `Settings`.
+4. Find the database password section.
+5. If you do not know the current password, reset it there and save the new one.
+
+## Recommended way to give me access on this machine
+
+Best option: set the secrets as user-level environment variables, then restart the agent session.
+
+PowerShell:
 
 ```powershell
-$env:SUPABASE_ACCESS_TOKEN = "your_supabase_pat"
+[Environment]::SetEnvironmentVariable("SUPABASE_ACCESS_TOKEN", "your_sbp_token", "User")
+[Environment]::SetEnvironmentVariable("SUPABASE_DB_PASSWORD", "your_database_password", "User")
 ```
 
-To persist it for your Windows user profile:
+Then restart Codex.
+
+Why this is preferable:
+
+- no secrets go into the repo
+- the CLI can use them directly
+- `supabase link` and `supabase db push` become scriptable
+
+## Alternative: give me the values directly
+
+If you prefer, you can paste me:
+
+- `SUPABASE_ACCESS_TOKEN`
+- database password
+
+Then I can run:
 
 ```powershell
-[Environment]::SetEnvironmentVariable("SUPABASE_ACCESS_TOKEN", "your_supabase_pat", "User")
+npx supabase link --project-ref urlyouruvipktczhaflt
+npx supabase db push
 ```
 
-After setting the token, restart Codex and use `supabase_fitchain`.
+The CLI docs note that `SUPABASE_DB_PASSWORD` can be supplied via environment variable, which avoids interactive prompts.
 
-## Safety
+## Current status
 
-- Supabase MCP is pinned to this project's ref and uses `read_only=true`.
-- The enabled Supabase feature groups are limited to `database`, `debugging`, `development`, and `docs`.
-- Vercel MCP is project-specific and currently read-only on the Vercel side.
+Already done:
+
+- installed `supabase` CLI locally in the repo
+- ran `supabase init`
+- created the standard `supabase/` directory
+- created the first migration file under `supabase/migrations/`
+- added npm scripts for link/status/push
+
+Still blocked:
+
+- remote `supabase link`
+- remote `supabase db push`
+
+Both are blocked only by missing auth secrets, not by repo setup anymore.

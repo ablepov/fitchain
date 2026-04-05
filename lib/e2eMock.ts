@@ -125,6 +125,10 @@ export function getMockTimezone(cookieStore?: CookieStoreLike | null) {
   return cookieTimezone?.trim() || E2E_MOCK_TIMEZONE;
 }
 
+export function isMockPlannerDisabled(cookieStore?: CookieStoreLike | null) {
+  return cookieStore?.get("e2e-plan-disabled")?.value === "1";
+}
+
 export function getMockHistory(cookieStore?: CookieStoreLike | null) {
   const rawValue = cookieStore?.get("e2e-history")?.value;
 
@@ -170,6 +174,10 @@ export function getMockSets(cookieStore?: CookieStoreLike | null) {
 }
 
 export function getMockSchedule(cookieStore?: CookieStoreLike | null) {
+  if (isMockPlannerDisabled(cookieStore)) {
+    return [];
+  }
+
   const cookiePlan = parseJsonCookie<MockScheduleRecord[]>(cookieStore, "e2e-plan");
 
   if (cookiePlan) {

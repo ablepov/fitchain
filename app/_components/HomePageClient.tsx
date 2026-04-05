@@ -43,6 +43,7 @@ type TodaySlide = { kind: "exercise"; exercise: ExerciseOverview } | { kind: "ad
 
 type WeekSlide =
   | { kind: "exercise"; exercise: ExerciseOverview; scheduleId: string }
+  | { kind: "unavailable" }
   | { kind: "add"; isEmptyDay: boolean };
 
 type AssignmentWithWeekday = WeeklyPlanItem & { weekday: number };
@@ -151,6 +152,28 @@ function EmptyPlannerCard({
   );
 }
 
+function PlannerUnavailableCard() {
+  return (
+    <div
+      data-testid="week-plan-unavailable"
+      className="rounded-[2rem] border border-zinc-900 bg-zinc-950/80 p-6"
+    >
+      <div className="flex items-center gap-3 text-zinc-100">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-white/[0.05]">
+          <CalendarDays className="size-5" />
+        </div>
+        <div>
+          <div className="text-lg font-semibold">Планировщик пока недоступен</div>
+          <div className="text-sm text-zinc-400">
+            База ещё не содержит таблицу расписания. Логирование подходов и статистика продолжают
+            работать.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActionSheetButton({
   label,
   icon,
@@ -236,6 +259,15 @@ function flattenAssignments(days: WeeklyPlanDay[]) {
   );
 }
 
+async function runMutationSafely(task: () => Promise<unknown>) {
+  try {
+    await task();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function HomePageClient() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -246,6 +278,7 @@ export function HomePageClient() {
     })
   );
   const { data: weeklyPlan } = useSuspenseQuery(weeklyPlanQueryOptions());
+  const plannerAvailable = weeklyPlan.isAvailable;
 
   const todayWeekday = useMemo(
     () => getDefaultWeekdayForTimezone(overview.timezone),
@@ -282,6 +315,18 @@ export function HomePageClient() {
     });
   }, [editContext]);
 
+  useEffect(() => {
+    if (plannerAvailable) {
+      return;
+    }
+
+    setPlanningContext(null);
+    setAddToDayOpen(false);
+    setCreateSheet((current) =>
+      current.weekday === null ? current : { open: false, weekday: null }
+    );
+  }, [plannerAvailable]);
+
   const allAssignments = useMemo(() => flattenAssignments(weeklyPlan.days), [weeklyPlan.days]);
   const overviewMap = useMemo(
     () => new Map(overview.exercises.map((exercise) => [exercise.id, exercise])),
@@ -316,6 +361,10 @@ export function HomePageClient() {
   }, [overview.exercises, overviewMap, todayAssignments]);
 
   const weekSlides = useMemo<WeekSlide[]>(() => {
+    if (!plannerAvailable) {
+      return [{ kind: "unavailable" }];
+    }
+
     const plannedSlides = selectedDayAssignments
       .map((item) => {
         const exercise = overviewMap.get(item.exerciseId);
@@ -336,7 +385,7 @@ export function HomePageClient() {
     }
 
     return [...plannedSlides, { kind: "add", isEmptyDay: false }];
-  }, [overviewMap, selectedDayAssignments]);
+  }, [overviewMap, plannerAvailable, selectedDayAssignments]);
 
   const slides = mode === "today" ? todaySlides : weekSlides;
   const emblaOptions = useMemo(
@@ -392,6 +441,11 @@ export function HomePageClient() {
   }
 
   function openCreateSheet(weekday: number | null) {
+    if (weekday !== null && !plannerAvailable) {
+      setMessage("Планировщик пока недоступен.");
+      return;
+    }
+
     setCreateForm({ type: "", goal: "" });
     setCreateSheet({ open: true, weekday });
   }
@@ -581,11 +635,13 @@ export function HomePageClient() {
       return;
     }
 
-    await createExerciseMutation.mutateAsync({
-      type: createForm.type.trim(),
-      goal,
-      weekday: createSheet.weekday,
-    });
+    await runMutationSafely(() =>
+      createExerciseMutation.mutateAsync({
+        type: createForm.type.trim(),
+        goal,
+        weekday: createSheet.weekday,
+      })
+    );
   }
 
   async function handleEditExerciseSubmit() {
@@ -600,27 +656,36 @@ export function HomePageClient() {
       return;
     }
 
-    await updateExerciseMutation.mutateAsync({
-      id: editContext.id,
-      type: editForm.type.trim(),
-      goal,
-    });
+    await runMutationSafely(() =>
+      updateExerciseMutation.mutateAsync({
+        id: editContext.id,
+        type: editForm.type.trim(),
+        goal,
+      })
+    );
   }
 
   async function handleToggleWeekday(exercise: ExerciseOverview, weekday: number) {
+    if (!plannerAvailable) {
+      setMessage("Планировщик пока недоступен.");
+      return;
+    }
+
     const assignment = allAssignments.find(
       (item) => item.exerciseId === exercise.id && item.weekday === weekday
     );
 
     if (assignment) {
-      await deletePlanMutation.mutateAsync(assignment.scheduleId);
+      await runMutationSafely(() => deletePlanMutation.mutateAsync(assignment.scheduleId));
       return;
     }
 
-    await createPlanMutation.mutateAsync({
-      exerciseId: exercise.id,
-      weekday,
-    });
+    await runMutationSafely(() =>
+      createPlanMutation.mutateAsync({
+        exerciseId: exercise.id,
+        weekday,
+      })
+    );
   }
 
   async function handleDeleteExercise(exercise: ExerciseOverview) {
@@ -629,7 +694,7 @@ export function HomePageClient() {
       return;
     }
 
-    await deleteExerciseMutation.mutateAsync(exercise.id);
+    await runMutationSafely(() => deleteExerciseMutation.mutateAsync(exercise.id));
   }
 
   const busy =
@@ -650,7 +715,7 @@ export function HomePageClient() {
             </div>
           ) : null}
 
-          {mode === "week" ? (
+          {mode === "week" && plannerAvailable ? (
             <WeekdayChips weekday={selectedWeekday} onChange={setSelectedWeekday} />
           ) : null}
 
@@ -705,6 +770,8 @@ export function HomePageClient() {
                         </Button>
                       }
                     />
+                  ) : slide.kind === "unavailable" ? (
+                    <PlannerUnavailableCard />
                   ) : mode === "today" ? (
                     <SystemCard
                       title="Добавить упражнение"
@@ -759,23 +826,27 @@ export function HomePageClient() {
       >
         {actionContext ? (
           <div className="space-y-3">
-            <ActionSheetButton
-              label={actionContext.source === "week" ? "Переназначить по дням" : "План на неделю"}
-              icon={<CalendarDays className="size-4" />}
-              onClick={() => {
-                setPlanningContext(actionContext.exercise);
-                setActionContext(null);
-              }}
-            />
+            {plannerAvailable ? (
+              <ActionSheetButton
+                label={actionContext.source === "week" ? "Переназначить по дням" : "План на неделю"}
+                icon={<CalendarDays className="size-4" />}
+                onClick={() => {
+                  setPlanningContext(actionContext.exercise);
+                  setActionContext(null);
+                }}
+              />
+            ) : null}
 
-            {actionContext.source === "week" && actionContext.scheduleId ? (
+            {plannerAvailable && actionContext.source === "week" && actionContext.scheduleId ? (
               <ActionSheetButton
                 label="Убрать из этого дня"
                 icon={<CalendarDays className="size-4" />}
-                onClick={async () => {
-                  await deletePlanMutation.mutateAsync(actionContext.scheduleId!);
-                  setActionContext(null);
-                }}
+                onClick={() =>
+                  void runMutationSafely(async () => {
+                    await deletePlanMutation.mutateAsync(actionContext.scheduleId!);
+                    setActionContext(null);
+                  })
+                }
               />
             ) : null}
 
@@ -835,7 +906,7 @@ export function HomePageClient() {
       </BottomSheet>
 
       <BottomSheet
-        open={Boolean(planningContext)}
+        open={plannerAvailable && Boolean(planningContext)}
         onClose={() => setPlanningContext(null)}
         title={planningContext ? `План: ${planningContext.type}` : "План на неделю"}
         description="Включайте дни, на которые упражнение должно попадать в недельный сценарий."
@@ -868,7 +939,7 @@ export function HomePageClient() {
       </BottomSheet>
 
       <BottomSheet
-        open={addToDayOpen}
+        open={plannerAvailable && addToDayOpen}
         onClose={() => setAddToDayOpen(false)}
         title={`Добавить на ${WEEKDAY_LABELS_RU[selectedWeekday]}`}
         description="Сначала выберите существующее упражнение. Если нужного нет, создайте новое прямо из этого сценария."
@@ -880,13 +951,15 @@ export function HomePageClient() {
                 key={exercise.id}
                 type="button"
                 className="flex w-full items-center justify-between rounded-2xl border border-zinc-900 bg-zinc-950 px-4 py-4 text-left"
-                onClick={async () => {
-                  await createPlanMutation.mutateAsync({
-                    exerciseId: exercise.id,
-                    weekday: selectedWeekday,
-                  });
-                  setAddToDayOpen(false);
-                }}
+                onClick={() =>
+                  void runMutationSafely(async () => {
+                    await createPlanMutation.mutateAsync({
+                      exerciseId: exercise.id,
+                      weekday: selectedWeekday,
+                    });
+                    setAddToDayOpen(false);
+                  })
+                }
                 disabled={busy}
               >
                 <div>

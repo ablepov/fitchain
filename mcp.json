@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "supabase_fitchain": {
-      "url": "https://mcp.supabase.com/mcp?project_ref=urlyouruvipktczhaflt&read_only=true&features=database,debugging,development,docs"
+      "url": "https://mcp.supabase.com/mcp?project_ref=urlyouruvipktczhaflt&features=database,debugging,development,docs"
     },
     "vercel_fitchain": {
       "url": "https://mcp.vercel.com/ablepovs-projects/fitchain"

@@ -734,6 +734,8 @@ export function ExerciseProgressCard({
   const commitRemainingRef = useRef(0);
   const pendingPlansRef = useRef(new Map<string, TokenSpawnPlan>());
   const tokensRef = useRef<TokenModel[]>([]);
+  const committedTotalRef = useRef(current);
+  const lastPropCurrentRef = useRef(current);
 
   const buttonValues = useMemo(() => deriveSmartButtons(recentReps), [recentReps]);
   const chartValues = useMemo(() => buildChartSeries(chart, recentReps), [chart, recentReps]);
@@ -745,6 +747,22 @@ export function ExerciseProgressCard({
   const remaining = Math.max(0, target - committedTotal);
 
   useEffect(() => {
+    committedTotalRef.current = committedTotal;
+  }, [committedTotal]);
+
+  useEffect(() => {
+    const previousPropCurrent = lastPropCurrentRef.current;
+    lastPropCurrentRef.current = current;
+
+    const hasLocalActivity =
+      pendingIdsRef.current.length > 0 || commitLockRef.current || commitRemainingRef.current > 0;
+    const expectedLocalTotal =
+      committedTotalRef.current + pendingIdsRef.current.length + commitRemainingRef.current;
+
+    if (hasLocalActivity && current > previousPropCurrent && current === expectedLocalTotal) {
+      return;
+    }
+
     setCommittedTotal(current);
   }, [current]);
 
@@ -1306,7 +1324,12 @@ export function ExerciseProgressCard({
 
   return (
     <div className={cn(styles.shell, className)}>
-      <article className={styles.card} style={themeStyle}>
+      <article
+        className={styles.card}
+        style={themeStyle}
+        data-testid="exercise-progress-card"
+        data-exercise-name={exercise}
+      >
         <div ref={sceneRef} className={cn(styles.scene, !isActiveVariant && styles.scenePlanned)}>
           <BackgroundChart values={chartValues} />
 
@@ -1327,7 +1350,9 @@ export function ExerciseProgressCard({
             </div>
 
             <div ref={headlineRef} className={styles.progressValue}>
-              <span className={styles.progressDone}>{committedTotal}</span>
+              <span className={styles.progressDone} data-testid="exercise-progress-current">
+                {committedTotal}
+              </span>
               <span className={styles.progressDivider}>/</span>
               <span className={styles.progressGoal}>{target}</span>
             </div>

@@ -33,6 +33,28 @@ async function swipeLeft(page: Page, viewport: Locator) {
   await page.waitForTimeout(250);
 }
 
+function installClientErrorTracker(page: Page) {
+  const clientErrors: string[] = [];
+
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      if (/^Failed to load resource: the server responded with a status of \d+/.test(message.text())) {
+        return;
+      }
+
+      clientErrors.push(`console: ${message.text()}`);
+    }
+  });
+
+  page.on("pageerror", (error) => {
+    clientErrors.push(`pageerror: ${error.message}`);
+  });
+
+  return async () => {
+    expect(clientErrors, clientErrors.join("\n")).toEqual([]);
+  };
+}
+
 function getAlternateWeekdayLabel() {
   const weekdayName = new Intl.DateTimeFormat("en-US", {
     timeZone: "Europe/Moscow",
@@ -45,6 +67,7 @@ function getAlternateWeekdayLabel() {
 }
 
 test("today carousel loops and keeps mobile navigation visible", async ({ page }) => {
+  const assertNoClientErrors = installClientErrorTracker(page);
   await page.goto("/");
 
   await expect(page.getByRole("navigation", { name: "Основная навигация" })).toBeVisible();
@@ -57,9 +80,11 @@ test("today carousel loops and keeps mobile navigation visible", async ({ page }
 
   await swipeLeft(page, viewport);
   await expect(page.getByText("pushups").first()).toBeVisible();
+  await assertNoClientErrors();
 });
 
 test("terminal add card creates a new exercise slide", async ({ page }) => {
+  const assertNoClientErrors = installClientErrorTracker(page);
   await page.goto("/");
 
   const viewport = page.getByTestId("home-carousel-viewport");
@@ -76,9 +101,11 @@ test("terminal add card creates a new exercise slide", async ({ page }) => {
   await expect(viewport).toBeVisible();
   await swipeLeft(page, viewport);
   await expect(page.getByText("Burpees")).toBeVisible();
+  await assertNoClientErrors();
 });
 
 test("exercise action sheet edits and deletes a card", async ({ page }) => {
+  const assertNoClientErrors = installClientErrorTracker(page);
   await page.goto("/");
 
   await page.getByRole("button", { name: "Открыть действия" }).first().click();
@@ -99,9 +126,11 @@ test("exercise action sheet edits and deletes a card", async ({ page }) => {
 
   await expect(page.getByText("Упражнение удалено")).toBeVisible();
   await expect(page.getByTestId("today-add-exercise")).toBeVisible();
+  await assertNoClientErrors();
 });
 
 test("week planner adds and removes an assignment on another weekday", async ({ page }) => {
+  const assertNoClientErrors = installClientErrorTracker(page);
   const alternateDayLabel = getAlternateWeekdayLabel();
 
   await page.goto("/?mode=week");
@@ -118,9 +147,63 @@ test("week planner adds and removes an assignment on another weekday", async ({ 
   await page.getByRole("dialog").getByRole("button", { name: "Убрать из этого дня" }).click();
 
   await expect(page.getByText("День пока пустой")).toBeVisible();
+  await assertNoClientErrors();
+});
+
+test("week planner mutation failures stay in UI state instead of page errors", async ({ page }) => {
+  const assertNoClientErrors = installClientErrorTracker(page);
+  const alternateDayLabel = getAlternateWeekdayLabel();
+
+  await page.route("**/api/training/plan", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: null,
+        error: {
+          code: "FEATURE_UNAVAILABLE",
+          message: "Weekly planner is unavailable until the schedule schema is applied.",
+        },
+      }),
+    });
+  });
+
+  await page.goto("/?mode=week");
+  await page.getByRole("button", { name: alternateDayLabel, exact: true }).click();
+  await page.getByRole("button", { name: "Добавить на день" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /pushups/i }).click();
+
+  await expect(page.getByText(/planner is unavailable/i)).toBeVisible();
+  await assertNoClientErrors();
+});
+
+test("planner unavailable state hides weekly planning controls", async ({ page }) => {
+  const assertNoClientErrors = installClientErrorTracker(page);
+  await page.context().addCookies([
+    {
+      name: "e2e-plan-disabled",
+      value: "1",
+      url: "http://127.0.0.1:3100",
+    },
+  ]);
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Открыть действия" }).first().click();
+  await expect(page.getByRole("button", { name: "План на неделю" })).toHaveCount(0);
+
+  await page.goto("/?mode=week");
+  await expect(page.getByTestId("week-plan-unavailable")).toBeVisible();
+  await expect(page.getByTestId("week-add-to-day")).toHaveCount(0);
+  await assertNoClientErrors();
 });
 
 test("stats hub, dashboard redirect, and profile timezone flow work end to end", async ({ page }) => {
+  const assertNoClientErrors = installClientErrorTracker(page);
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/stats$/);
 
@@ -136,4 +219,5 @@ test("stats hub, dashboard redirect, and profile timezone flow work end to end",
   await page.locator("#profile-timezone").selectOption("UTC");
   await page.getByRole("button", { name: "Сохранить таймзону" }).click();
   await expect(page.getByText(/сохран/i)).toBeVisible();
+  await assertNoClientErrors();
 });

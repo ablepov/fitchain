@@ -2,9 +2,18 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonSuccess, readJsonSafely } from "@/lib/api";
 import {
+  databaseCapabilityKeys,
+  isCapabilityUnavailable,
+  isMissingRelationError,
+  markCapabilityAvailable,
+  markCapabilityUnavailable,
+  SCHEDULE_FEATURE_UNAVAILABLE_MESSAGE,
+} from "@/lib/databaseCapabilities";
+import {
   applyMockStateCookies,
   getMockExercises,
   getMockSchedule,
+  isMockPlannerDisabled,
   isE2EMockMode,
 } from "@/lib/e2eMock";
 import { getSessionSnapshot } from "@/lib/sessionData";
@@ -24,6 +33,10 @@ function getNextPosition(scheduleRows: Array<{ weekday: number; position: number
   }
 
   return Math.max(...sameDayRows.map((row) => row.position)) + 1;
+}
+
+function jsonPlannerUnavailable() {
+  return jsonError(503, "FEATURE_UNAVAILABLE", SCHEDULE_FEATURE_UNAVAILABLE_MESSAGE);
 }
 
 export async function GET() {
@@ -52,6 +65,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (isE2EMockMode()) {
+    if (isMockPlannerDisabled(req.cookies)) {
+      return jsonPlannerUnavailable();
+    }
+
     const exercises = getMockExercises(req.cookies);
     const schedule = getMockSchedule(req.cookies);
     const exercise = exercises.find((item) => item.id === parsed.data.exerciseId);
@@ -87,6 +104,10 @@ export async function POST(req: NextRequest) {
     return jsonError(401, "UNAUTHORIZED", "No session");
   }
 
+  if (isCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable)) {
+    return jsonPlannerUnavailable();
+  }
+
   const { data: exercise, error: exerciseError } = await supabase
     .from("exercises")
     .select("id")
@@ -108,12 +129,15 @@ export async function POST(req: NextRequest) {
     .eq("user_id", userId);
 
   if (existingError) {
-    if (existingError.code === "42P01") {
-      return jsonError(500, "INTERNAL_ERROR", "exercise_schedule table is missing");
+    if (isMissingRelationError(existingError)) {
+      markCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable);
+      return jsonPlannerUnavailable();
     }
 
     return jsonError(500, "INTERNAL_ERROR", existingError.message);
   }
+
+  markCapabilityAvailable(databaseCapabilityKeys.exerciseScheduleTable);
 
   const duplicate = (existingRows ?? []).some(
     (row) => row.weekday === parsed.data.weekday && row.exercise_id === parsed.data.exerciseId
@@ -146,6 +170,11 @@ export async function POST(req: NextRequest) {
 
   if (error?.code === "23505") {
     return jsonError(409, "CONFLICT", "Exercise already scheduled for this day");
+  }
+
+  if (isMissingRelationError(error)) {
+    markCapabilityUnavailable(databaseCapabilityKeys.exerciseScheduleTable);
+    return jsonPlannerUnavailable();
   }
 
   if (error) {

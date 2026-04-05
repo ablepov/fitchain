@@ -20,6 +20,8 @@ function getSupabaseOrigins() {
 
 const connectSrc = [
   "'self'",
+  "https://vercel.live",
+  "wss://vercel.live",
   ...getSupabaseOrigins(),
   ...(isDevelopment
     ? [
@@ -35,9 +37,16 @@ const connectSrc = [
     : []),
 ];
 
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  ...(isDevelopment ? ["'unsafe-eval'"] : []),
+  "https://vercel.live",
+];
+
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${isDevelopment ? "'unsafe-eval'" : ""}`.trim(),
+  `script-src ${scriptSrc.join(" ")}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
